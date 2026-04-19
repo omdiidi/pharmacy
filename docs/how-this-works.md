@@ -209,17 +209,14 @@ Covered in the meeting prep, but the short version:
 
 ```
  On your existing Linux Mint Mac mini:
-   1. Install Chrome Remote Desktop → we can drive it remotely
-   2. Create a Chrome profile called "pharm1-automation"
-      → log Amazon Seller, eBay, ABC Order, etc. into this profile
-      → this is the profile our agents will drive
-   3. When minicrew (our agent runtime) lands:
-      → install the Python worker service (~30 min)
-      → point it at our shared database
-      → first agent job running within an hour
+   When minicrew (our agent runtime) lands — takes ~30 min of setup:
+     → install the Python worker service
+     → set up .env with Supabase + Claude API + SP-API credentials
+     → install systemd service so it auto-starts on boot
+     → first agent job running within an hour
 ```
 
-Zero hardware cost. Uses the mini you already own.
+Zero hardware cost. Uses the mini you already own. Stays at the pharmacy running in the background — we can SSH in for maintenance when needed (optional, not required for operation).
 
 ---
 
@@ -245,7 +242,7 @@ Zero hardware cost. Uses the mini you already own.
 Week 0 (today)                 Meeting: align on everything
 Week 1-2                       I build the platform + chatbot
 Week 1-2                       You submit SP-API app (1-4 week wait)
-Week 3-4                       Browser-driven demo running on your mini
+Week 2-3                       SP-API credentials land, wired into chatbot tools
 Week 4-6                       SP-API approved + real agent briefings
 Month 2-3                      Full operation, attributable revenue report
 ```

@@ -249,8 +249,8 @@ Not officially. Submitting a clean application the first time is the best bet. K
 **Q: What happens if Amazon denies the Developer Profile?**
 Rare for a legitimate seller with good standing. If it happens: they email a reason, we address it, resubmit. Can also escalate via Seller Central contact form.
 
-**Q: Can we scrape Amazon as a backup while waiting?**
-Browser automation via Chrome Remote Desktop on Kaleem's mini works as a temporary bridge. Fragile long-term; SP-API is the real answer.
+**Q: Should we start building without this?**
+Phase 1 build (web app + chatbot + schema) doesn't need SP-API. Kicks off immediately. SP-API application runs in parallel so credentials arrive around the time Phase 2 needs them.
 
 ---
 

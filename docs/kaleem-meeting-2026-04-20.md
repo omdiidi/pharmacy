@@ -12,14 +12,14 @@ Short sheet for the in-person meeting. No fluff. Heavy on visuals so you can sho
 │                                                              │
 │ ✓ Plan complete (v4, 3 reviews) │ 1. Send ABC data email    │
 │ ✓ Repo live: omdiidi/pharmacy   │ 2. NDA signed             │
-│ ✓ Architecture finalized        │ 3. Brand list (top 20-30) │
-│ ✓ Cost estimate: $300-600/mo    │ 4. TIC supplement check   │
-│ ✓ Ready to build tomorrow       │ 5. Amazon creds on mini   │
-│                                  │ 6. Give me remote access  │
+│ ✓ Architecture finalized        │ 3. Submit SP-API dev app  │
+│ ✓ Cost estimate: $300-600/mo    │ 4. Brand list (top 20-30) │
+│ ✓ Ready to build tomorrow       │ 5. TIC supplement check   │
+│                                  │                           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-Plan is done. Live in the repo at **https://github.com/omdiidi/pharmacy**. Three reviewer passes, 9/10 implementation confidence. I need 6 commitments from him in this meeting to unblock the 4-6 week path to a first real agent briefing. **Big ask this meeting: set up remote access to his Mac mini + log Amazon in there. That unlocks an immediate demo path parallel to the SP-API paperwork.**
+Plan is done. Live in the repo at **https://github.com/omdiidi/pharmacy**. Three reviewer passes, 9/10 implementation confidence. I need 5 commitments from him in this meeting to unblock the 4-6 week path to a first real agent briefing. **Biggest ask: submit the Amazon SP-API developer application today or tomorrow so the 5-14 day Amazon review runs in parallel with my Phase 1 build.**
 
 ---
 
@@ -186,11 +186,6 @@ Cost per day of the system: ~$10-20 in AI API calls.
 │  │                     │  │ sha256 log + size check     │   │
 │  └─────────────────────┘  └─────────────────────────────┘   │
 │                                                              │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │ Chrome profile (logged into Amazon Seller, eBay,    │    │
-│  │ ABC Order, etc.) ← session we can drive remotely    │    │
-│  └─────────────────────────────────────────────────────┘    │
-│                                                              │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -205,18 +200,16 @@ Cost per day of the system: ~$10-20 in AI API calls.
 | **Not public-facing** | Behind his pharmacy internet, no port forwarding, no firewall gymnastics |
 | **Isolated from Pioneer Rx** | Prescriptions can never touch this system |
 
-### What we install (~1 hour setup)
+### What we install (~30 min setup, once minicrew Linux port lands)
 
 ```
   Step 1. Install Python 3.11+ + Claude Code CLI                  (10 min)
   Step 2. Clone minicrew-config repo                              ( 2 min)
-  Step 3. Set up .env (Supabase + Claude API keys)                (10 min)
+  Step 3. Set up .env (Supabase + Claude API + SP-API credentials)( 5 min)
   Step 4. Install systemd service (auto-start on boot)            ( 5 min)
-  Step 5. Install remote access (Tailscale + VNC / Rustdesk)      (15 min)
-  Step 6. Set up Chrome profile, log into Amazon Seller + eBay    (10 min)
-  Step 7. Run first test job end-to-end                           (10 min)
+  Step 5. Run first test job end-to-end                           ( 8 min)
   ────────────────────────────────────────────────────────────────────────
-                                                                  ~60 min
+                                                                  ~30 min
 ```
 
 ### Resource impact
@@ -231,111 +224,51 @@ Cost per day of the system: ~$10-20 in AI API calls.
 
 ---
 
-## 🔑 The big meeting ask: remote access + Amazon logged in
+## 🔑 The big meeting ask: submit the Amazon SP-API developer application
 
-This is the smart move that unlocks an immediate demo path **parallel to SP-API paperwork**.
+The single most important unlock from this meeting. Amazon's review takes 5-14 business days; starting it today means credentials arrive around the time Phase 1 ships, so there's no idle waiting later. Full procedure in `docs/amazon-sp-api-setup.md`.
 
-### Why
-
-```
- SP-API path (official, what we pay to use long-term)
- ─────────────────────────────────────────────────────
- Submit ungating docs ──▶ Amazon review (1-4 weeks) ──▶ API access ──▶ wire
-                         └─────────┬──────────┘
-                               waiting...
-                               
- Remote-browser path (bridge, works in days)
- ─────────────────────────────────────────────────
- Remote access to mini ──▶ Log Amazon into Chrome ──▶ AI drives browser
-                                                       via Chrome MCP,
-                                                       shows demo THIS WEEK
-```
-
-While Amazon reviews the gating paperwork, **we set up remote access + log Amazon into a Chrome profile on his Mac mini**, and the AI drives the browser to do research / listing / repricing. It's fragile long-term (Amazon changes the UI, Captchas hit, sessions expire) — but it gets Kaleem a real demo in days, and **smooths the transition to SP-API once gating approves**.
-
-### What to set up during the meeting (or right after) — Chrome Remote Desktop
-
-Chrome Remote Desktop (CRD) is the pick: free, Google-hosted, runs in Chrome, no firewall config, works on Linux Mint. One tool solves it.
+### What he does in the meeting (~10 minutes)
 
 ```
-  1. On Kaleem's Mac mini:
-     → Install Chrome if not already there (Linux Mint standard)
-     → Go to remotedesktop.google.com/host
-     → Click "Set up remote access" → downloads .deb, installs
-     → Sign in with a dedicated Google account
-        (create kaleempharmacy.automation@gmail.com — clean revoke later)
-     → Name the host "pharm1-mini"
-     → Set a 6-digit PIN (we save this in our 1Password or equivalent)
-
-  2. Create a dedicated Chrome profile called "pharm1-automation"
-     → log into Amazon Seller Central + eBay + ABC Order + Parmed + others
-     → this profile is what our agents will drive
-     → kept completely separate from Kaleem's personal Chrome
-
-  3. On our side (Dev + Nick):
-     → go to remotedesktop.google.com/access
-     → sign into the same Google account
-     → "pharm1-mini" appears in the list
-     → click, enter PIN, we're in — see his full desktop
-
-  4. Test end to end:
-     → open Chrome on the mini from our side
-     → load Amazon Seller Central (already logged in via the automation profile)
-     → confirm the session is stable for 10+ minutes
-
-  5. Install minicrew worker later (when Linux port lands):
-     → we drive the install via the CRD session
-     → Kaleem can watch live if he wants
+  1. Log into Seller Central (he can do this on his phone or the mini)
+  2. Apps & Services → Develop Apps
+  3. Click "Register as a developer"
+  4. Fill in Developer Profile form:
+     - Developer name: [pharmacy legal name]
+     - Business address: [exact address on Seller Central]
+     - Website, email, phone
+  5. Select "For your own use" — private app
+  6. Check data-use categories we need:
+     ☑ Product Information
+     ☑ Pricing Information
+     ☑ Orders (we'll skip Personal Information for now to avoid
+       the restricted-role questionnaire — can add later)
+     ☑ Inventory Information
+     ☑ Reports
+     ☑ Notifications
+  7. Submit
 ```
 
-### Security guarantees to tell him (Chrome Remote Desktop)
+Amazon emails back in 1-3 business days typically.
+
+### After approval (~15 more minutes, can be done over a quick call)
 
 ```
-  ✓ Uses his Google account — auth is Google-level (2FA required)
-  ✓ PIN required for every connection from our side
-  ✓ He sees a persistent banner on the mini while we're connected
-     → he knows when we're driving, end session with one click
-  ✓ All traffic encrypted end-to-end through Google's infrastructure
-  ✓ No VPN, no port forwarding, no public IP exposed
-  ✓ No credentials leave his Mac mini — browser logins stay LOCAL
-  ✓ Browser automation happens on HIS machine, not ours
-     (we just see the screen, can click, but nothing runs on our side)
-  ✓ To revoke access forever: sign out of the Google account on the mini,
-     or delete the host from remotedesktop.google.com/host (one click)
-  ✓ Nothing Rx-related touches this setup — Pioneer runs on a separate PC
+  1. Create the SP-API app (Private / Self-authorized)
+  2. Select roles: Product Listing, Pricing, Inventory & Order Tracking,
+     Amazon Fulfillment, Finance & Accounting, Reports
+  3. Authorize the app for his own account
+  4. Save the 3 credentials:
+     - LWA Client ID
+     - LWA Client Secret
+     - Refresh Token
+  5. Share with us via 1Password after NDA is signed
 ```
 
-### Why Chrome Remote Desktop vs alternatives
+### Why this is the one right path
 
-| Option | Setup time | Cost | Kaleem friction | Our use |
-|---|---|---|---|---|
-| **Chrome Remote Desktop** | 10 min | Free | Low — already has Chrome | Full desktop, browser driving, terminal |
-| Tailscale + VNC | 30 min | Free | Med — two tools to install | Network tunnel + VNC |
-| TeamViewer | 15 min | Paid after trial | Low | Similar to CRD |
-| AnyDesk | 15 min | Free personal | Low | Similar to CRD |
-| SSH only | 5 min | Free | Low | Terminal only — no GUI |
-
-**CRD wins** on: simplicity (one tool), already-familiar ecosystem (Google), no paid tier, no network config, full desktop.
-
-### What it unlocks (demo-able within a week)
-
-```
-  BEFORE SP-API:                          AFTER SP-API (4-6 weeks later):
-  ────────────────────────────            ──────────────────────────────
-  • AI researches via Perplexity          • Same + direct Amazon API access
-  • AI drives Chrome to read his          • No browser automation needed
-    Amazon Seller data
-  • AI can compose listings but           • Listings post via API
-    he clicks Submit himself
-  • Kaleem watches it happen live         • Fully autonomous (with approvals)
-```
-
-### If he's hesitant about remote access
-
-Alternatives to offer:
-- **Pair programming over Zoom**: he shares screen, I tell him what to click. Slower but zero tool install.
-- **He does it himself**: I send him setup instructions, he clicks through. Removes our involvement but adds latency for every iteration.
-- **Delay to post-NDA**: wait until NDA signed, then set up. 100% legitimate — NDA first is his call.
+No shortcuts exist. Amazon doesn't offer a single-click API key like Stripe. Browser scraping / manual CSV exports are fragile and don't scale. **SP-API is the real long-term answer and the review timeline runs in parallel with Phase 1 build — no idle waiting if we start today.**
 
 ---
 
@@ -371,11 +304,11 @@ Alternatives to offer:
 
 **Ask:** *"Top 20-30 brands you touch. I'll classify safe / needs-LOA / actively-hunts. We may need to ask some manufacturers for Letters of Authorization."*
 
-### 6. Remote access + Amazon logged in
+### 6. Submit the SP-API developer application
 
-**What:** See big section above. Unlocks demo within a week, parallel to SP-API paperwork.
+**What:** See big section above. The Amazon API paperwork — 5-14 business days review. Starting today means credentials land around when Phase 1 ships.
 
-**Ask:** *"After the NDA, can we spend 30 minutes setting up Tailscale + getting Amazon Seller logged in on your mini? That lets us show you something running against your real account within days, not weeks."*
+**Ask:** *"Can we spend 10 minutes in the meeting (or on your phone tonight) submitting the SP-API developer profile? Starts Amazon's review clock immediately. Full procedure is in the repo at `docs/amazon-sp-api-setup.md`."*
 
 ---
 
@@ -433,8 +366,7 @@ Week 0: Today (meeting)
  │  • NDA signed (or scheduled)                                  │
  │  • ABC email ready to forward                                 │
  │  • Brand list + TIC shortlist committed                       │
- │  • Remote access set up on the mini                           │
- │  • Amazon logged into Chrome profile on the mini              │
+ │  • SP-API developer application submitted to Amazon           │
  └──────────────────────────────────────────────────────────────┘
 
 Week 1-2: Build Phase 1 (Dev's focused work)
@@ -445,30 +377,31 @@ Week 1-2: Build Phase 1 (Dev's focused work)
  │  • Deploy to Render                                          │
  │  • Kaleem can sign in and chat                               │
  │                                                               │
+ │  In parallel (Amazon's side):                                │
+ │  • SP-API developer profile reviewed (5-14 business days)    │
+ │                                                               │
  │  In parallel (Kaleem's side):                                │
  │  • ABC email sent, awaiting reply                            │
- │  • SP-API gating paperwork submitted to Amazon               │
  │  • EzriRx signup started if not already a member             │
  └──────────────────────────────────────────────────────────────┘
 
-Week 3-4: Browser-driven demo (before SP-API approves)
+Week 2-3: SP-API credentials + app wiring
  ┌──────────────────────────────────────────────────────────────┐
- │  • AI drives Chrome remotely on his mini                     │
- │  • Research Analyst produces first real briefing using       │
- │    Perplexity + browser automation                           │
- │  • Kaleem sees: "here are 3 things to list today, here's why"│
- │  • He clicks List → AI drives browser to post                │
- │  • First real demo he can show to his MSF friend             │
+ │  • Developer Profile approved                                │
+ │  • Create Private SP-API app, authorize, save 3 credentials  │
+ │  • Share via 1Password (after NDA)                           │
+ │  • Wire credentials into Render environment                  │
+ │  • Chatbot gains live Amazon data tools (orders, pricing)    │
  └──────────────────────────────────────────────────────────────┘
 
-Week 4-6: Real agents + APIs
+Week 4-6: Real agents + all data sources
  ┌──────────────────────────────────────────────────────────────┐
  │  • Minicrew Linux port lands (external team)                 │
- │  • SP-API approved → swap browser automation for API calls   │
+ │  • Install worker on Kaleem's mini                           │
  │  • Keepa subscription active                                 │
  │  • EzriRx EDI onboarded                                      │
  │  • First daily morning briefing in his real Inbox            │
- │  • Repricer running against live listings                    │
+ │  • Repricer running against live listings via SP-API         │
  └──────────────────────────────────────────────────────────────┘
 
 Week 8: Full operation
@@ -519,7 +452,7 @@ Month 2-3: $10k-on-Amazon demo
   ☐ Forward ABC data-exchange email to his rep
   ☐ Send similar emails to McKesson + Cardinal reps (I'll draft)
   ☐ Sign the NDA
-  ☐ Allow remote access setup on the mini
+  ☐ Submit SP-API developer profile (10 min)
 
   Important (this week if possible):
   ──────────────────────────────────
@@ -548,6 +481,6 @@ Month 2-3: $10k-on-Amazon demo
 
 ## The meeting's one-sentence goal
 
-**Walk out with: NDA in motion, ABC email sent, remote access to the mini set up, brand list captured.**
+**Walk out with: NDA in motion, ABC email sent, SP-API developer application submitted, brand list captured.**
 
 Everything else (architecture explanation, agents, timeline) is context to make those four commitments feel safe and obvious.
