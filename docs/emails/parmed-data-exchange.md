@@ -8,26 +8,42 @@
 
 ---
 
-**Subject:** Parmed EDI Feed Routing Request — 832 / 846 to Additional SFTP Endpoint
+**Subject:** Parmed EDI Feed Routing Request — 832 / 846 to Additional SFTP + Integration Questions
 
 Hi [Rep Name],
 
-I'd like to connect with your data integration team at Parmed. I'm automating inventory and pricing reporting and need to route the EDI feeds — specifically:
+I'd like to connect with your data integration team at Parmed to set up expanded reporting on my end. Specifically:
+
+### Core request
+
+Route these EDI feeds to an **additional** SFTP endpoint I'll provide (in addition to whatever destination Parmed currently feeds):
 
 - **832** — Price/Sales Catalog
 - **846** — Inventory Inquiry / Advice
+- **856** — Advance Ship Notice
+- **810** — Invoice
 
-…to an **additional** SFTP endpoint we'll provide (in addition to whatever destination they currently feed).
+### Questions for the data team
 
-Three questions for the team:
+1. **Feed cadence** on the 846 — daily? more frequent? Higher tiers available?
 
-1. **Feed cadence** on the 846 today — daily? more frequent? Higher tiers available?
+2. **Anticipated availability dates** — included in the 846 feed, or available as a supplemental file?
 
-2. **Anticipated availability dates** for back-ordered items — included in the 846 feed?
+3. **Product master** — Can I receive the complete catalog of SKUs eligible on my account (NDC, UPC, descriptions, pack sizes, images, substitution mappings)?
 
-3. **Blind shipping confirmation** in writing — that Parmed blind-ships to my customers for orders I place (no Parmed branding on the carton, packing slip, or invoice). Needed for my Amazon Seller Central documentation.
+4. **Contract pricing** — Does the 832 feed reflect my contracted rates, not list prices?
 
-Account info:
+5. **Historical data export** — Last 12–24 months of my price / inventory / order history as a one-time dump?
+
+6. **Programmatic ordering** — Can I place POs via EDI 850? Typical 855 acknowledgment latency? Backorder-substitution logic?
+
+7. **Real-time stock API or webhook** — Anything beyond the daily 846 for time-sensitive stock checks?
+
+8. **Blind shipping confirmation in writing** — Please confirm that Parmed blind-ships to my customers (no Parmed branding on carton, packing slip, or invoice) for orders I place. Required for my Amazon Seller Central documentation.
+
+9. **Cencora consolidation** — Since Parmed is Cencora-owned, is my Parmed data integration handled by the same team as my ABC account, or are they separate? If separate, what's the escalation path when I have cross-wholesaler questions?
+
+### Account info
 - **Account name:** [Pharmacy legal name]
 - **Account #:** [Parmed account number]
 - **Primary location:** [Address]

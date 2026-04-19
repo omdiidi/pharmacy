@@ -83,27 +83,63 @@ Multi-wholesaler is how our Fulfillment Ops agent can show you the best source f
 
 ---
 
-## What each email is asking for (same pattern, 4 things)
+## What each email is asking for
 
-Every draft email asks the wholesaler's data team for exactly four things:
+### ABC + Parmed (expanded — 10 asks, since they're the primary suppliers)
+
+Since we're bothering the data team anyway, we front-load everything we might want. The full list of asks in each email:
 
 ```
-  1. Route EDI 832 (price catalog) + 846 (inventory) feeds
-     to an additional SFTP endpoint we control
+  1. Route EDI 832 / 846 / 856 / 810 feeds to additional SFTP
      — SAME DATA, ADDITIONAL DESTINATION
-     — not replacing any existing feed
+     — not replacing existing Pioneer feed
 
-  2. Feed cadence details — how often is 846 refreshed?
+  2. Feed cadence — how often is 846 refreshed?
 
-  3. Anticipated restock dates — included in 846 feed?
-     (critical for our stock-out prediction)
+  3. Anticipated restock dates — in 846, or supplemental?
 
-  4. Blind-shipping confirmation in writing
-     (required for Amazon Seller Central documentation —
-      no wholesaler branding on customer-facing packages)
+  4. Product master data — full SKU catalog (NDC, UPC, pics,
+     pack sizes, substitution mappings)
+
+  5. Contract pricing confirmation — 832 reflects our
+     contracted rates, not list prices
+
+  6. Historical data export — 12-24 months of price + inventory
+     + order history as one-time dump
+
+  7. Programmatic ordering via EDI 850 — can we place POs from
+     our system? 855 acknowledgment latency? Substitution logic?
+
+  8. Real-time stock API — beyond daily 846, any REST endpoint
+     or webhook for high-volume / time-sensitive checks?
+
+  9. Blind-shipping confirmation in writing — no wholesaler
+     branding on carton, packing slip, or invoice
+
+  10. Parmed / Cencora consolidation (ABC email only) —
+      can ABC team also handle Parmed integration, or separate?
 ```
 
-The 4th one matters even if the first 3 fail. Without blind-ship confirmation in writing, your Amazon account is at audit risk.
+### McKesson, Cardinal, IPC (lighter — 4 asks)
+
+These are secondary for Kaleem; simpler email with the core 4:
+
+```
+  1. Route 832 / 846 feeds to our SFTP
+  2. Feed cadence
+  3. Anticipated restock dates
+  4. Blind-shipping confirmation in writing
+```
+
+If those go well, we escalate with the longer list.
+
+### The full question catalog
+
+All questions we'd ever want answered — used on follow-up calls with the data team after the initial email exchange: [`wholesaler-questions.md`](./wholesaler-questions.md). 50+ questions across 13 categories (EDI basics, routing, inventory semantics, pricing, product master, historical data, programmatic ordering, real-time options, shipping, returns, compliance, support, contracts).
+
+### The one that matters most
+
+**Blind-shipping confirmation in writing.** Without this, Kaleem's Amazon Seller account is at audit risk regardless of what else we do.
 
 ---
 
