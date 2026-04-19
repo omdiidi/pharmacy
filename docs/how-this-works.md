@@ -55,19 +55,25 @@ A team of AI specialists reads your wholesalers, Amazon's market data, the FDA f
 
 ---
 
-## What each specialist does
+## What each specialist does (one specific sentence each)
 
-| Specialist | Job | When |
-|---|---|---|
-| **Chief of Staff** | Curates everything into your Inbox. The one you chat with. | Always on |
-| **Research Analyst** | Reads overnight data, hands you 5–10 ideas to list today with full reasoning | Every morning 6am |
-| **Repricer** | Adjusts prices on your live listings when the market shifts | 2x daily + market events |
-| **Fulfillment Ops** | When Amazon order hits, shows you all wholesaler options side-by-side, you pick | Instant on order |
-| **Account Health** | Watches your Amazon metrics; pauses listings automatically if health tanking | Daily + events |
-| **Customer Success** | Drafts replies to customer messages; flags medical questions straight to you | On message |
-| **Bookkeeper** | Reconciles Amazon payouts nightly, produces daily P&L | Nightly |
-| **Portfolio Manager** | Weekly strategic review with year-over-year comparisons | Sunday 7am |
-| **Reflector** | Reads the week, updates the team's shared playbook (what worked, what didn't) | Sunday 11pm |
+**1. Chief of Staff** — The AI you directly chat with; its job is to curate every report from the 8 other specialists into a single prioritized inbox, answer your questions in natural language using data from the entire system, and mediate when different specialists disagree (e.g., Repricer wants to drop a price but Portfolio Manager wants to hold).
+
+**2. Research Analyst** — Runs every morning at 6 AM, pulls overnight changes from your wholesalers + Keepa + the FDA shortage feed + Google Trends + your own sales history, applies the policy filter to auto-exclude blocked products, scores the remaining opportunities, and hands you a ranked list of 5–10 products worth listing today with a full "why now" reasoning per pick.
+
+**3. Repricer** — Twice a day (morning + afternoon) plus instantly when a market event fires, reviews every one of your live listings and decides whether to match the current Buy Box, hold position, raise, drop, or pause — all within the margin floor you set and the Amazon Fair Pricing ceiling (~25% above 30-day median).
+
+**4. Fulfillment Ops** — The moment a new Amazon or eBay order hits, queries every wholesaler in real time to find which one has that SKU cheapest and actually in stock, builds a side-by-side comparison table (price, stock, bulk discount, ship ETA), and shows it to you to pick — then deep-links you into the winner's pre-filled cart so you click Buy.
+
+**5. Account Health** — Polls Amazon's seller health metrics every hour (Order Defect Rate, Late Ship Rate, Cancellation Rate, Valid Tracking Rate, Buy Box win %) — if any metric is drifting bad, it auto-pauses new listings to protect your account and drafts a diagnostic + recovery plan for your approval; if a metric goes red, emergency mode triggers and texts you.
+
+**6. Customer Success** — When a customer message or return request hits your Seller account, it first triages whether the message is actually actionable (vs "thanks" / bot noise), then drafts a contextually appropriate reply using your past handling style as a template — you always approve before it sends, and any medical question is automatically flagged to you personally since that's pharmacist-level.
+
+**7. Bookkeeper** — Runs nightly and on every Amazon payout event — reconciles all sales, fees, refunds, chargebacks, and wholesaler costs into a daily one-page P&L, flags anomalies (refund rate spike, fee change, payout delay), tracks your sales tax obligations per state and 1099-K thresholds, and never touches money itself — only reports.
+
+**8. Portfolio Manager** — Every Sunday morning, pulls a year's worth of data to produce a strategic review: what categories are growing, which are dying, year-over-year comparisons, seasonal positioning, cash flow, competitor landscape shifts — and proposes 3 strategic moves for the coming week that bind the other specialists' behavior until the next review.
+
+**9. Reflector** — Every Sunday night, reads everything that happened that week (every decision made, every outcome that followed) and distills the patterns into updated playbooks and facts in the shared memory — so next time a similar situation arises (e.g., ABC out of acetaminophen + Amazon offers dropping), the Research Analyst already knows what worked last time.
 
 ---
 
