@@ -253,43 +253,69 @@ This is the smart move that unlocks an immediate demo path **parallel to SP-API 
 
 While Amazon reviews the gating paperwork, **we set up remote access + log Amazon into a Chrome profile on his Mac mini**, and the AI drives the browser to do research / listing / repricing. It's fragile long-term (Amazon changes the UI, Captchas hit, sessions expire) — but it gets Kaleem a real demo in days, and **smooths the transition to SP-API once gating approves**.
 
-### What to set up during the meeting (or right after)
+### What to set up during the meeting (or right after) — Chrome Remote Desktop
+
+Chrome Remote Desktop (CRD) is the pick: free, Google-hosted, runs in Chrome, no firewall config, works on Linux Mint. One tool solves it.
 
 ```
-  1. Install Tailscale on his mini
-     → gives us a stable, private network tunnel (no public IP exposure)
-     → he controls: can revoke access anytime from the Tailscale dashboard
+  1. On Kaleem's Mac mini:
+     → Install Chrome if not already there (Linux Mint standard)
+     → Go to remotedesktop.google.com/host
+     → Click "Set up remote access" → downloads .deb, installs
+     → Sign in with a dedicated Google account
+        (create kaleempharmacy.automation@gmail.com — clean revoke later)
+     → Name the host "pharm1-mini"
+     → Set a 6-digit PIN (we save this in our 1Password or equivalent)
 
-  2. Set up remote access — two options:
-     Option A: Tailscale + macOS Screen Sharing (or equivalent for Linux Mint)
-     Option B: Rustdesk (open source, simpler, cross-platform)
-     Default: whichever's easier on Linux Mint — probably Rustdesk
+  2. Create a dedicated Chrome profile called "pharm1-automation"
+     → log into Amazon Seller Central + eBay + ABC Order + Parmed + others
+     → this profile is what our agents will drive
+     → kept completely separate from Kaleem's personal Chrome
 
-  3. Create a dedicated Chrome profile called "pharm1-automation"
-     → log into Amazon Seller Central + eBay + ABC Order + Parmed
-     → this profile is what our agents will drive (via Chrome MCP tools)
-     → kept separate from his personal Chrome profile
+  3. On our side (Dev + Nick):
+     → go to remotedesktop.google.com/access
+     → sign into the same Google account
+     → "pharm1-mini" appears in the list
+     → click, enter PIN, we're in — see his full desktop
 
-  4. Install Tailscale on OUR machines (Dev + Nick)
-     → secure tunnel to his mini from anywhere
-     → no VPN gymnastics, no passwords flying around
+  4. Test end to end:
+     → open Chrome on the mini from our side
+     → load Amazon Seller Central (already logged in via the automation profile)
+     → confirm the session is stable for 10+ minutes
 
-  5. Test: from our laptop, SSH into his mini over Tailscale,
-     run a dry command, confirm tunnel works
+  5. Install minicrew worker later (when Linux port lands):
+     → we drive the install via the CRD session
+     → Kaleem can watch live if he wants
 ```
 
-### Security guarantees to tell him
+### Security guarantees to tell him (Chrome Remote Desktop)
 
 ```
-  ✓ He approves the initial Tailscale connection — we can't just connect
-  ✓ He can revoke access any time from the Tailscale admin panel
-  ✓ All traffic is encrypted (WireGuard tunnel)
-  ✓ No public IP ever exposed
-  ✓ No credentials leave his Mac mini
-  ✓ Browser automation happens LOCALLY on his machine, not ours
-  ✓ Every action shows up in his session if he wants to watch live
-  ✓ Nothing Rx-related touches this setup (Pioneer separate)
+  ✓ Uses his Google account — auth is Google-level (2FA required)
+  ✓ PIN required for every connection from our side
+  ✓ He sees a persistent banner on the mini while we're connected
+     → he knows when we're driving, end session with one click
+  ✓ All traffic encrypted end-to-end through Google's infrastructure
+  ✓ No VPN, no port forwarding, no public IP exposed
+  ✓ No credentials leave his Mac mini — browser logins stay LOCAL
+  ✓ Browser automation happens on HIS machine, not ours
+     (we just see the screen, can click, but nothing runs on our side)
+  ✓ To revoke access forever: sign out of the Google account on the mini,
+     or delete the host from remotedesktop.google.com/host (one click)
+  ✓ Nothing Rx-related touches this setup — Pioneer runs on a separate PC
 ```
+
+### Why Chrome Remote Desktop vs alternatives
+
+| Option | Setup time | Cost | Kaleem friction | Our use |
+|---|---|---|---|---|
+| **Chrome Remote Desktop** | 10 min | Free | Low — already has Chrome | Full desktop, browser driving, terminal |
+| Tailscale + VNC | 30 min | Free | Med — two tools to install | Network tunnel + VNC |
+| TeamViewer | 15 min | Paid after trial | Low | Similar to CRD |
+| AnyDesk | 15 min | Free personal | Low | Similar to CRD |
+| SSH only | 5 min | Free | Low | Terminal only — no GUI |
+
+**CRD wins** on: simplicity (one tool), already-familiar ecosystem (Google), no paid tier, no network config, full desktop.
 
 ### What it unlocks (demo-able within a week)
 
