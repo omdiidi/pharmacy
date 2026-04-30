@@ -1,0 +1,95 @@
+# Render Blueprint for PharmaDash. One-click setup:
+#   New → Blueprint → connect omdiidi/pharmacy → Apply.
+# After Render reads this file, populate the `pharm1-shared` env group with
+# secrets (see docs/render-setup.md). The worker stanza is intentionally
+# commented out until the minicrew Linux port lands.
+
+services:
+  # --- Next.js web -----------------------------------------------------------
+  - type: web
+    name: pharm1-web
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm ci && npm run build
+    preDeployCommand: npm run verify-models
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - fromGroup: pharm1-shared
+
+  # --- minicrew worker (DISABLED until minicrew Linux port lands) ------------
+  # When enabling: uncomment, ensure `npm run worker` is wired in package.json.
+  # - type: worker
+  #   name: pharm1-worker
+  #   runtime: node
+  #   plan: starter
+  #   region: oregon
+  #   buildCommand: npm ci && npm run build
+  #   startCommand: npm run worker
+  #   envVars:
+  #     - fromGroup: pharm1-shared
+
+  # --- Weekly encrypted backup → Backblaze B2 --------------------------------
+  - type: cron
+    name: pharm1-backup-weekly
+    runtime: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: ./Dockerfile.backup
+    schedule: "0 9 * * 0"  # Sundays 09:00 UTC
+    dockerCommand: backup-supabase.sh
+    envVars:
+      - fromGroup: pharm1-shared
+
+  # --- Monthly restore-test (proves backups are recoverable) -----------------
+  - type: cron
+    name: pharm1-backup-restore-test
+    runtime: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: ./Dockerfile.backup
+    schedule: "0 10 1 * *"  # 1st of month, 10:00 UTC
+    dockerCommand: restore-test.sh
+    envVars:
+      - fromGroup: pharm1-shared
+      # Throwaway Supabase project used as the restore target.
+      # Set this manually on the cron service — NOT in the shared group.
+      - key: RESTORE_TEST_DB_URL
+        sync: false
+
+# ---------------------------------------------------------------------------
+# Shared env vars. All values are `sync: false` so Render prompts the operator
+# on first apply and stores them encrypted at rest.
+# ---------------------------------------------------------------------------
+envVarGroups:
+  - name: pharm1-shared
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_DB_URL
+        sync: false
+      - key: ALLOWED_USER_EMAILS
+        sync: false
+      - key: BACKUP_PASSPHRASE
+        sync: false
+      - key: B2_KEY_ID
+        sync: false
+      - key: B2_APPLICATION_KEY
+        sync: false
+      - key: B2_BUCKET
+        sync: false
+      - key: B2_ENDPOINT_URL
+        sync: false
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: MAX_DAILY_CLAUDE_SPEND_USD
+        value: "50"

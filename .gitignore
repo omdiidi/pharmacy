@@ -21,6 +21,7 @@ dist/
 .env.test.local
 .env.production.local
 .env*.local
+!.env.example
 
 # Misc
 .DS_Store
@@ -59,3 +60,4 @@ tmp/*
 !tmp/research/
 !tmp/done-plans/
 !tmp/cancelled-plans/
+CLAUDE.local.md

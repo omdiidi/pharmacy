@@ -1,0 +1,18 @@
+# Image used by both the weekly backup cron and the monthly restore-test cron.
+# Keep the toolchain minimal — every byte runs in a Render Cron container.
+
+FROM alpine:3.20
+
+RUN apk add --no-cache \
+    postgresql16-client \
+    aws-cli \
+    gnupg \
+    bash \
+    coreutils
+
+COPY scripts/backup-supabase.sh /usr/local/bin/backup-supabase.sh
+COPY scripts/restore-test.sh /usr/local/bin/restore-test.sh
+
+RUN chmod +x /usr/local/bin/backup-supabase.sh /usr/local/bin/restore-test.sh
+
+CMD ["backup-supabase.sh"]

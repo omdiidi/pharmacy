@@ -1,0 +1,80 @@
+# minicrew-config/config.yaml
+# Authored in Phase 1; runs when the Linux minicrew port lands.
+
+project: pharm1
+supabase:
+  url: ${SUPABASE_URL}
+  service_role_key: ${SUPABASE_SERVICE_ROLE_KEY}
+
+logging:
+  redact_env:
+    - ANTHROPIC_API_KEY
+    - SUPABASE_SERVICE_ROLE_KEY
+    - KEEPA_API_KEY
+    - AMAZON_SP_API_REFRESH_TOKEN
+
+job_types:
+  pharm:research-analyst:
+    skill: pharm:research-analyst
+    model: claude-opus-4-7
+    thinking_budget: high
+    mode: fan_out                 # fan-out across category archetypes
+    groups:
+      - allergy
+      - immune_cold_flu
+      - vitamin_d
+      - magnesium_melatonin
+      - multivitamin_weight
+      - sunscreen_topical
+      - childrens_prenatal
+      - miscellaneous
+    merge_skill: pharm:research-analyst-merge
+    idle_watchdog_minutes: 45
+
+  pharm:repricer-sweep:
+    skill: pharm:repricer
+    model: claude-sonnet-4-6
+    thinking_budget: medium
+    idle_watchdog_minutes: 20
+
+  pharm:fulfillment-source:
+    skill: pharm:fulfillment-ops
+    model: claude-haiku-4-5
+    thinking_budget: low
+    idle_watchdog_minutes: 10
+
+  pharm:account-health:
+    skill: pharm:account-health
+    model: claude-haiku-4-5
+    thinking_budget: low
+    idle_watchdog_minutes: 15
+
+  pharm:customer-triage:
+    skill: pharm:customer-triage
+    model: claude-haiku-4-5
+    thinking_budget: none
+    idle_watchdog_minutes: 5
+
+  pharm:customer-draft:
+    skill: pharm:customer-draft
+    model: claude-sonnet-4-6
+    thinking_budget: medium
+    idle_watchdog_minutes: 15
+
+  pharm:bookkeeper:
+    skill: pharm:bookkeeper
+    model: claude-haiku-4-5
+    thinking_budget: medium
+    idle_watchdog_minutes: 30
+
+  pharm:portfolio-manager:
+    skill: pharm:portfolio-manager
+    model: claude-opus-4-7
+    thinking_budget: high
+    idle_watchdog_minutes: 60
+
+  pharm:reflector:
+    skill: pharm:reflector
+    model: claude-opus-4-7
+    thinking_budget: high
+    idle_watchdog_minutes: 90

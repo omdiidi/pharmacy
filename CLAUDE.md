@@ -516,3 +516,5 @@ grep -rln "PLAN.md\|how-this-works.md" --include="*.md" .
 ```
 
 After reading these, you should have enough context to execute any of the three pickup options without reading the full repo. If you need deeper context on a specific topic (memory schema details, Amazon SP-API specifics, etc.), the targeted docs are listed above.
+
+@CLAUDE.local.md
