@@ -49,36 +49,44 @@ Licensed pharmacist, owns two pharmacies in Utah (St. Mark's + Redwood Road). Al
 ┌─────────────────────────────────────────────────────────────────┐
 │                 SUPABASE (cloud — source of truth)               │
 │  Postgres + pgvector. Queue + business data + memory + audit.    │
-└────────┬────────────────────────────────────────┬───────────────┘
-         │                                        │
-         │ read/write                             │ read/write
-         ▼                                        ▼
-┌───────────────────────┐                  ┌─────────────────────────┐
-│ Cloud (Render)        │                  │ Mac mini (Linux Mint,   │
-│                       │                  │   Kaleem's pharmacy)    │
-│ • Next.js web UI      │                  │ = minicrew worker       │
-│ • Business Chatbot    │                  │                         │
-│   (Claude Opus +      │                  │ • Polls Supabase jobs   │
-│   tools over Supabase)│                  │ • Runs Claude Code      │
-│ • Auth + Inbox        │                  │   sessions per job type │
-│ • SP-API webhook      │                  │ • SFTP to EzriRx / ABC  │
-│   handler (Phase 2)   │                  │ • Weekly pg_dump backup │
-│ • Scheduled cron      │                  │                         │
-│   → enqueue jobs      │                  │                         │
-└───────────────────────┘                  └─────────────────────────┘
+└────────┬────────────────────────────────────────────────────────┘
+         │ reads/writes
+         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ Render (cloud — single deploy unit)                              │
+│                                                                  │
+│ Web service:                  Worker service:                    │
+│ • Next.js 14 app              • minicrew worker                  │
+│ • /api/chat (Claude API)      • Polls Supabase jobs              │
+│ • /api/auth/callback          • Invokes Claude Agent SDK         │
+│ • /api/health                 • EDI polling (SFTP from Render    │
+│ • Webhook handlers (Phase 2)    egress IP, static if needed)     │
+│ • Scheduled cron → enqueue                                       │
+│                                                                  │
+│ Render Cron Jobs (~$1/mo each):                                  │
+│ • Weekly: encrypted pg_dump → B2                                 │
+│ • Monthly: restore-test from latest backup                       │
+└──────────────────────────────────────────────────────┬──────────┘
+                                                       │ encrypted dump
+                                                       ▼
+                                       ┌─────────────────────────────┐
+                                       │ Backblaze B2 (separate      │
+                                       │ cloud account, Object Lock  │
+                                       │ + write-only API token)     │
+                                       │ 12-week lifecycle retention │
+                                       └─────────────────────────────┘
 ```
 
-**Cloud responsibilities:**
-- Fast-response surfaces (UI, chatbot, webhooks) — can't go down
-- Scheduled work that enqueues background jobs (morning Research Analyst, daily Account Health, etc.)
-- Kaleem's UI access from anywhere (phone at the counter, home laptop)
+**What runs where:**
+- **Render web service:** Next.js UI + Business Chatbot + auth + SP-API webhook handler + scheduled cron → enqueue jobs.
+- **Render worker service:** minicrew worker, polling Supabase queue, invoking Claude Agent SDK for each job. Also handles SFTP/EDI polling (with Render Pro static egress IP if any wholesaler requires it).
+- **Render Cron Jobs:** Weekly encrypted pg_dump → Backblaze B2; monthly restore-test.
+- **Supabase:** Postgres + pgvector + auth. Source of truth for queue, business data, memory, audit log.
+- **Backblaze B2 (separate cloud account):** off-cloud encrypted backup target with Object Lock + write-only API token. 12-week lifecycle retention.
 
-**Mac mini responsibilities:**
-- Heavy agent reasoning (Claude Code sessions with full tool access)
-- SFTP polling for EDI feeds (EzriRx, ABC direct)
-- Local backup of Supabase for disaster recovery
+**No on-prem dependency.** All system compute lives on Render. (Earlier architecture used Kaleem's Mac mini as primary worker; removed 2026-04-30 — see Key decisions log.)
 
-**Agent runtime:** [minicrew](https://github.com/omdiidi/minicrew) — the Dev's own job-queue-on-Supabase pattern, currently being ported to Linux separately. When ready, we install on Kaleem's mini, point at our Supabase, and agents run.
+**Agent runtime:** [minicrew](https://github.com/omdiidi/minicrew) — the Dev's own job-queue-on-Supabase pattern, currently being ported to Linux separately. When ready, we deploy as a Render worker service alongside the web service, point at our Supabase, and agents run.
 
 ---
 
@@ -146,7 +154,7 @@ The MVP is everything we can build without waiting on external dependencies. Age
 4. **Business Chatbot** — Claude Opus + 5 tools (query_products, query_orders, search_memory, get_recent_briefings, enqueue_job), real SSE streaming with abort signal, auth gate + allowlist + rate limit + daily budget guard + Sentry
 5. **Auth flow** — Supabase magic-link, email allowlist, `user_pharmacy_access` bootstrap on first sign-in
 6. **Minicrew config + 9 skill prompts** — authored as files, ready when runtime lands
-7. **Weekly encrypted pg_dump backup** with sha256 log + monthly restore-test cron
+7. **Weekly encrypted pg_dump backup to Backblaze B2** (separate cloud account, Object Lock + write-only API token) with sha256 log + monthly restore-test cron. Both as Render Cron Jobs.
 8. **Health check endpoint** for Render zero-downtime deploys
 9. **Observability** — Sentry + `claude_usage` tracking + daily spend cap
 
@@ -174,7 +182,7 @@ The MVP is everything we can build without waiting on external dependencies. Age
 - Additional chatbot tools as new questions surface
 
 **Phase 2** (when external dependencies land — minicrew Linux, SP-API gating, EzriRx, Keepa)
-- Wire minicrew worker on Kaleem's Linux Mac mini
+- Deploy minicrew worker as a Render worker service alongside the web service
 - Activate Research Analyst, Repricer, Fulfillment Ops, Account Health — the 4 most user-facing agents
 - SP-API integration — live listings, orders, pricing, health metrics
 - EzriRx EDI integration — multi-wholesaler stock + price + ordering
@@ -246,6 +254,7 @@ The MVP is everything we can build without waiting on external dependencies. Age
 | **FDA Recall feed** | Phase 2 | Free | Auto-block recalled ASINs |
 | **Google Trends API** | Phase 2 | Free | Demand acceleration signals |
 | **Voyage AI embeddings** | Phase 1.5 | ~$0.50/mo at our volume | Semantic memory search |
+| **Backblaze B2** | Phase 1 | ~$1–3/mo at our volume | Off-cloud encrypted backup target (Object Lock + write-only API token, separate cloud account from Supabase) |
 | **Sentry** | Phase 1 | Free tier | Error observability |
 | **Twilio SMS** | Phase 2 | ~$10-20/mo | Urgent briefing pushes |
 
@@ -285,8 +294,8 @@ The MVP is everything we can build without waiting on external dependencies. Age
 | 2026-04-18 | Agent swarm pattern with Chief of Staff coordination | Scaling to multiple specialist agents without overwhelming Kaleem |
 | 2026-04-18 | List on existing ASINs only | Pictures + descriptions already there; faster to launch |
 | 2026-04-18 | Inventory tab = wholesaler stock view (not pharmacy physical stock) | Core arbitrage signal lives in multi-wholesaler stock, not his shelf |
-| 2026-04-18 | Memory on Supabase with weekly local backup | Source of truth cloud-side; backup for disaster recovery |
-| 2026-04-18 | No local AI models on Mac mini | Intel 8GB too constrained; API calls cheap enough |
+| 2026-04-18 | Memory on Supabase with weekly local backup | Source of truth cloud-side; backup for disaster recovery *(superseded 2026-04-30 — backup now to Backblaze B2 in separate cloud account; see row below)* |
+| 2026-04-18 | No local AI models on Mac mini | Intel 8GB too constrained; API calls cheap enough *(rendered moot 2026-04-30 — Mac mini removed from architecture)* |
 | 2026-04-18 | Use minicrew as agent runtime | Dev's own repo, purpose-built for this pattern |
 | 2026-04-18 | Keepa subscription = yes | $55/mo for the FBA→FBM flip signal alone is worth it |
 | 2026-04-18 | EzriRx as wholesaler aggregator | One integration = 30+ wholesalers; direct ABC EDI is parallel slower track |
@@ -296,6 +305,8 @@ The MVP is everything we can build without waiting on external dependencies. Age
 | 2026-04-19 | Placeholder pages collapsed to one `/preview` route | Reduces scope without losing Phase 2 visibility |
 | 2026-04-19 | npm (not pnpm) | Simpler, Render default, no benefit from pnpm here |
 | 2026-04-19 | UI polish is last on Phase 1 critical path | Backend/data/agent work first; UI refined during/after build with real data to show |
+| 2026-04-30 | **Cloud-only deployment; Mac mini removed from architecture** | Removes pharmacy-WiFi single point of failure; backup goes to Backblaze B2 (separate cloud account, Object Lock + write-only token) for stronger air-gap than on-prem mini. Render handles static egress IP if wholesaler reps confirm fixed-IP requirement. Supersedes 2026-04-18 "Memory on Supabase with weekly local backup" and "No local AI models on Mac mini" rows above — both rendered moot by removal of the mini. |
+| 2026-04-30 | **Inference layer = Claude Agent SDK (TypeScript), not Claude Code CLI** | Same engine, library form. Native HITL hooks (PreToolUse, PermissionRequest) + OpenTelemetry + skill files load identically. Anthropic-recommended production path. See `tmp/research/2026-04-30-agent-runtime-recommendation.md` v3. |
 
 ---
 
@@ -325,11 +336,11 @@ The MVP is everything we can build without waiting on external dependencies. Age
 
 ## Next steps
 
-1. **Set up this repo's GitHub remote** — we just initialized git locally; need a new GitHub repo (the existing `nkpardon8-prog/connect-crm` remote is a different project entirely)
+1. ~~**Set up this repo's GitHub remote**~~ **DONE** — origin points to `https://github.com/omdiidi/pharmacy.git`
 2. **Kaleem's tomorrow meeting** — use `docs/kaleem-todos.md` as the conversation guide; get ABC email sent, confirm TIC status on his top supplement brands, confirm blind-ship policy across all his wholesalers, sign NDA so we can start sharing credentials
 3. **Start Phase 1 implementation** — `/implement tmp/ready-plans/2026-04-19-phase-1-mvp.md` kicks off the 44-task build
 4. **Sunday planning meeting** — lock payment structure, process cadence, working agreement
-5. **When minicrew Linux port lands** — install on Kaleem's Mac mini, point at our Supabase, first agent job can fire
+5. **When minicrew Linux port lands** — deploy as a Render worker service, point at our Supabase, first agent job can fire
 
 ---
 

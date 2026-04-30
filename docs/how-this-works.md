@@ -30,7 +30,8 @@ A team of AI specialists reads your wholesalers, Amazon's market data, the FDA f
         ┌─────────────────┴─────────────────┐
         │                                    │
         │  9 AI SPECIALISTS                  │
-        │  — each does one job well —        │
+        │  — running in our cloud setup —    │
+        │  (Render + Supabase)               │
         │                                    │
         │  Research Analyst                  │
         │  Repricer                          │
@@ -43,11 +44,12 @@ A team of AI specialists reads your wholesalers, Amazon's market data, the FDA f
         │  Chief of Staff (meta)             │
         │                                    │
         └────────────────┬───────────────────┘
-                         │
                          │ all share one memory
                          ▼
           ┌──────────────────────────────┐
-          │   SHARED DATABASE + MEMORY    │
+          │   CLOUD DATABASE              │
+          │   + WEEKLY ENCRYPTED BACKUPS  │
+          │   to a separate cloud bucket  │
           │   (every decision logged,     │
           │    every outcome remembered)  │
           └──────────────────────────────┘
@@ -203,20 +205,15 @@ Amazon's dropship policy: the package that reaches your customer must look like 
 
 ---
 
-## What we need from your Mac mini
+## What we need from you on infrastructure
 
-Covered in the meeting prep, but the short version:
+**Nothing.** Everything runs in our cloud setup (Render for the app + agents; Supabase for the database; Backblaze for off-cloud encrypted backups). You don't need to host anything, manage any hardware, keep any computer running, or grant SSH access. We handle uptime.
 
-```
- On your existing Linux Mint Mac mini:
-   When minicrew (our agent runtime) lands — takes ~30 min of setup:
-     → install the Python worker service
-     → set up .env with Supabase + Claude API + SP-API credentials
-     → install systemd service so it auto-starts on boot
-     → first agent job running within an hour
-```
+**Why this changed (vs earlier conversations):** Earlier plans had your Mac mini doing some of the agent work. We moved everything to the cloud so the system's uptime doesn't depend on your pharmacy's WiFi or power. **Your mini is still useful for whatever you use it for** — it just isn't load-bearing for our system anymore.
 
-Zero hardware cost. Uses the mini you already own. Stays at the pharmacy running in the background — we can SSH in for maintenance when needed (optional, not required for operation).
+**Pioneer / prescription isolation is preserved.** The cloud architecture never touches Pioneer's network, never gets prescription data, runs in a completely separate Supabase project. Two-POS architecture is unchanged.
+
+**Where your data lives:** Your Amazon order history, listings, and OTC sales data live in Supabase (US-region, encrypted at rest). Weekly encrypted backups are stored in a separate cloud account from Supabase, so even if either provider has an issue, the other has your data. You own all of it; full export anytime.
 
 ---
 
@@ -240,6 +237,7 @@ Zero hardware cost. Uses the mini you already own. Stays at the pharmacy running
 
 ```
 Week 0 (today)                 Meeting: align on everything
+Week 0-1                       Cloud infra provisioned (Render + Supabase + B2). Zero setup on your end.
 Week 1-2                       I build the platform + chatbot
 Week 1-2                       You submit SP-API app (1-4 week wait)
 Week 2-3                       SP-API credentials land, wired into chatbot tools
@@ -252,13 +250,13 @@ Month 2-3                      Full operation, attributable revenue report
 ## Questions answered in one pass
 
 **Q: How much does this cost to run?**
-~$360–680/month once wired (AI API + database + data feeds + hosting). A single good arbitrage sale (like the Tinactin moment — $51 sold from $7 cost) covers a full week of running cost.
+~$370–710/month once wired (AI API + database + Render web + Render worker + B2 backup + Render Cron + data feeds). A single good arbitrage sale (like the Tinactin moment — $51 sold from $7 cost) covers a full week of running cost.
 
 **Q: Who owns the data?**
-You do. Everything lives in a Supabase database in your account. You get weekly encrypted backups to your own Mac mini. Full export anytime.
+You do. Everything lives in a Supabase database in your account. You get weekly encrypted backups to a Backblaze B2 bucket in a cloud account separate from Supabase, so a compromise of one provider doesn't reach the backup. Full export anytime, all yours.
 
 **Q: What if I want to stop using it?**
-Revoke SP-API app, remove our user access from Seller Central, turn off the Mac mini. Everything stops. Data is yours to keep.
+Revoke SP-API app, remove our user access from Seller Central, we shut down our Render services. Everything stops. Data export sent to you, all encrypted backups already in your Backblaze account. No on-prem hardware to deal with.
 
 **Q: Can this touch my Pioneer / prescription system?**
 No. By design, architecturally separated. OTC-only. Two-POS architecture — Pioneer stays untouched on its own PC.
@@ -278,7 +276,8 @@ You can reject it with one click. The Reflector agent reads your rejections week
 │                                                                       │
 │  THE PLATFORM                                                         │
 │  A team of 9 AI specialists coordinated by a Chief of Staff,          │
-│  running on your Mac mini + cloud database, watching 5 data feeds,    │
+│  running entirely in our cloud setup (Render + Supabase, with         │
+│  off-cloud encrypted backups in Backblaze), watching 5 data feeds,    │
 │  producing a daily list of actions for you to approve.                │
 │                                                                       │
 │  DATA FEEDS                                                           │

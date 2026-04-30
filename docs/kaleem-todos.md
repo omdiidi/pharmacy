@@ -125,6 +125,7 @@ If yes, we can pull historical data from them and not start from scratch.
 - [ ] Send similar emails to his McKesson and Cardinal reps (templates to follow once ABC pattern is proven)
 - [ ] Sign up for EzriRx if not already a member
 - [ ] Provide blind-ship confirmation emails from each wholesaler
+- [ ] **Confirm with each wholesaler rep** (ABC, McKesson, Cardinal, Parmed, IPC) whether SFTP / EDI feeds require a fixed source IP. Drives whether we need Render Pro static IP, a small proxy box, or just EzriRx aggregator. (Email drafts: `docs/emails/abc-order-data-exchange.md`, `docs/emails/cardinal-data-exchange.md`, `docs/emails/ipc-data-exchange.md`, `docs/emails/mckesson-data-exchange.md`, `docs/emails/parmed-data-exchange.md`.)
 
 ---
 
@@ -160,8 +161,8 @@ If yes, we can pull historical data from them and not start from scratch.
 
 These are for us to figure out:
 
-- **Hosting:** Render web service for the dashboard + Mac mini for compute jobs? Or all-in on cloud?
-- **Database:** Postgres on Supabase? Self-hosted? Local SQL on his Mac mini for any sensitive data?
+- ~~**Hosting:** Render web service for the dashboard + Mac mini for compute jobs? Or all-in on cloud?~~ **Settled 2026-04-30: all-in on cloud (Render web + worker, Supabase database, Backblaze B2 backup).**
+- ~~**Database:** Postgres on Supabase? Self-hosted? Local SQL on his Mac mini for any sensitive data?~~ **Settled 2026-04-30: Supabase only. No local SQL on the mini. Off-cloud backup to Backblaze B2 (separate cloud account) handles air-gap.**
 - **Auth:** Just Kaleem + a few staff for v1.
 - **Multi-pharmacy data model from day 1**, even if single-tenant for now — easier than retrofitting.
 - **Amazon SP-API gating timeline** — start the H&PC ungating paperwork *immediately* (1-4 weeks). Runs in parallel with build.

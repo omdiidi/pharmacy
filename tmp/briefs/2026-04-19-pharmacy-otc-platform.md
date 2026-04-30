@@ -2,6 +2,8 @@
 
 Synthesizes decisions from discussion session on 2026-04-18.
 
+> **2026-04-30 architecture update:** This brief assumes the Mac mini as primary agent worker (see "Compute" line in the Technical Stack section, "Memory: weekly pg_dump to Mac mini" decision, and the "Mac mini running Linux Mint" line in Existing Tools). After follow-up research and user discussion, the architecture moved to **cloud-only on Render** with backup to Backblaze B2 in a separate cloud account. The brief is preserved as a historical decision record from the April 18 discussion; for current architecture see `tmp/research/2026-04-30-agent-runtime-recommendation.md` v3 and `tmp/ready-plans/2026-04-30-cloud-only-refactor.md`.
+
 ## Why
 
 Kaleem (licensed pharmacist, 2 pharmacies in Utah — St. Mark's + Redwood Rd) wants to automate his Amazon + eBay OTC product listing business. Currently he does it by hand: lists ~30 SKUs, fulfills orders by searching ABC Order / Parmed / McKesson / Cardinal wholesaler portals, uses Perplexity for market research, copy-pastes product descriptions. He already makes real money at this (saw 5+ orders in one day on the transcript, Tinactin sold at $51 from $7 cost during a stock-out). The opportunity is clear; automation removes the manual grind and adds intelligence he can't do by hand.
@@ -45,7 +47,7 @@ Signals to combine:
 - Parmed account (Cencora-owned, likely same EDI path)
 - Pioneer (prescription-side — we don't touch)
 - Heartland POS (prescription-side — we don't touch)
-- Mac mini running Linux Mint (Intel, 8GB — workhorse for agent runtime)
+- Mac mini running Linux Mint (Intel, 8GB — ~~workhorse for agent runtime~~ no longer load-bearing as of 2026-04-30; see top callout)
 
 ## Decisions
 

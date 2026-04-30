@@ -1,5 +1,7 @@
 # Meeting Prep — Kaleem · 2026-04-20
 
+> **2026-04-30 update:** This was meeting prep for the 2026-04-20 meeting (now historical). Architecture has since shifted to **cloud-only** (Mac mini removed). Sections referring to Mac mini setup are kept as historical record but flagged inline. For current architecture see `tmp/research/2026-04-30-agent-runtime-recommendation.md` v3 and `CLAUDE.md`.
+
 Short sheet for the in-person meeting. No fluff. Heavy on visuals so you can show, not just tell.
 
 ---
@@ -108,31 +110,46 @@ Cost per day of the system: ~$10-20 in AI API calls.
 
 ## Architecture in one diagram (for him)
 
+*Updated 2026-04-30. Original diagram showed Mac mini as primary worker; that role moved to Render.*
+
 ```
                    ┌─────────────────────────────────────┐
                    │   SUPABASE (cloud — always-on)       │
-                   │                                      │
-                   │   Queue + data + memory + backup     │
+                   │   Queue + data + memory + audit log  │
                    │   $25/mo. One source of truth.       │
-                   └───┬──────────────────────────┬──────┘
-                       │                          │
-         ┌─────────────┘                          └──────────────┐
-         │ reads/writes                          reads/writes    │
-         ▼                                                       ▼
-┌──────────────────────────┐                  ┌──────────────────────────┐
-│  RENDER (cloud web host) │                  │  KALEEM'S MAC MINI       │
-│                          │                  │  (Linux Mint, at pharmacy)│
-│  • Kaleem's web app      │                  │                           │
-│  • Sign-in + Inbox + Chat│                  │  • Runs the 9 AI agents  │
-│  • Business Chatbot      │                  │    as background jobs    │
-│  • Works on phone + lap- │                  │  • Pulls daily wholesaler │
-│    top anywhere          │                  │    data via secure SFTP   │
-│                          │                  │  • Weekly encrypted       │
-│  $20-40/mo               │                  │    backup to local disk  │
-└──────────────────────────┘                  │                           │
-                                              │  $0 (he already owns it)  │
-                                              └──────────────────────────┘
+                   └───────────────┬──────────────────────┘
+                                   │ reads/writes
+                                   ▼
+                   ┌─────────────────────────────────────┐
+                   │  RENDER (single cloud deploy unit)   │
+                   │                                      │
+                   │  Web service:                        │
+                   │  • Kaleem's web app                  │
+                   │  • Sign-in + Inbox + Chat            │
+                   │  • Business Chatbot                  │
+                   │  • Works on phone + laptop anywhere  │
+                   │                                      │
+                   │  Worker service:                     │
+                   │  • Runs the 9 AI agents              │
+                   │  • Pulls daily wholesaler data       │
+                   │    via SFTP                          │
+                   │                                      │
+                   │  Render Cron:                        │
+                   │  • Weekly encrypted backup → B2      │
+                   │                                      │
+                   │  $30-65/mo                           │
+                   └─────────────────┬───────────────────┘
+                                     │ encrypted backup
+                                     ▼
+                   ┌─────────────────────────────────────┐
+                   │  BACKBLAZE B2 (separate cloud acct)  │
+                   │  • Off-cloud encrypted backups       │
+                   │  • Object Lock + write-only token    │
+                   │  • $1-3/mo                           │
+                   └─────────────────────────────────────┘
 ```
+
+**No on-prem hardware required.** Earlier plan used Kaleem's Mac mini; that's been replaced with the cloud worker so system uptime doesn't depend on pharmacy WiFi or power.
 
 ```
                               Kaleem at the counter
@@ -162,65 +179,17 @@ Cost per day of the system: ~$10-20 in AI API calls.
 
 ---
 
-## The Mac mini — what runs on it, why his is perfect
+## ~~The Mac mini~~ → Cloud-only (updated 2026-04-30)
 
-### What goes on the mini
+Earlier meeting prep proposed using Kaleem's existing Mac mini as the primary agent worker. After follow-up research and user discussion, the architecture moved to **fully cloud-deployed** on Render. Reasons:
+- Keeps system uptime independent of pharmacy WiFi/power.
+- Backup target moved to Backblaze B2 in a separate cloud account for stronger air-gap than on-prem (Object Lock + write-only API token = compromised credentials can't delete the backup).
+- No SSH-into-pharmacy maintenance burden.
+- Cost difference ($10–30/mo Render worker + $1–3/mo B2) is negligible vs business-uptime risk.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                  KALEEM'S MAC MINI (Linux Mint, Intel 8GB)  │
-│                                                              │
-│  ┌─────────────────────┐  ┌─────────────────────────────┐   │
-│  │ minicrew worker     │  │ SFTP pollers                │   │
-│  │ (Python)            │  │ (daily pulls)               │   │
-│  │                     │  │                             │   │
-│  │ polls Supabase ─────┼──┼─> EzriRx EDI feed          │   │
-│  │ for jobs every 5s   │  │ ─> ABC direct EDI (later)  │   │
-│  │                     │  │                             │   │
-│  │ spawns Claude Code  │  └─────────────────────────────┘   │
-│  │ session per job     │                                     │
-│  │                     │  ┌─────────────────────────────┐   │
-│  │ [tmux window 1]     │  │ Weekly encrypted backup     │   │
-│  │ [tmux window 2]     │  │ (pg_dump → local disk)      │   │
-│  │ [tmux window 3]     │  │                             │   │
-│  │                     │  │ sha256 log + size check     │   │
-│  └─────────────────────┘  └─────────────────────────────┘   │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
+**For the meeting (which has now passed):** there was no Mac mini setup ask of Kaleem. If/when Kaleem asks "what about my mini?" the answer: he keeps it for personal use; our system has zero on-prem dependency.
 
-### Why his existing mini is ideal
-
-| Advantage | Why it matters |
-|---|---|
-| **Already owns it** | $0 hardware cost |
-| **Linux Mint** | Python + cron + tmux + systemd out of the box |
-| **Sits at the pharmacy** | Close to his actual business, low-latency |
-| **Off-hours idle** | Runs heavy agent work during quiet pharmacy hours |
-| **Not public-facing** | Behind his pharmacy internet, no port forwarding, no firewall gymnastics |
-| **Isolated from Pioneer Rx** | Prescriptions can never touch this system |
-
-### What we install (~30 min setup, once minicrew Linux port lands)
-
-```
-  Step 1. Install Python 3.11+ + Claude Code CLI                  (10 min)
-  Step 2. Clone minicrew-config repo                              ( 2 min)
-  Step 3. Set up .env (Supabase + Claude API + SP-API credentials)( 5 min)
-  Step 4. Install systemd service (auto-start on boot)            ( 5 min)
-  Step 5. Run first test job end-to-end                           ( 8 min)
-  ────────────────────────────────────────────────────────────────────────
-                                                                  ~30 min
-```
-
-### Resource impact
-
-```
-  Idle:           ~5% CPU, ~500MB RAM
-  Per-job:        ~25% CPU, ~1.5GB RAM (Claude Code session)
-  Concurrent:     3-4 jobs comfortably on 8GB
-  Backup night:   spikes briefly during pg_dump
-  Disk usage:     ~50GB/year for backups
-```
+**Pioneer/Rx isolation is preserved.** The cloud architecture never touches Pioneer's network, never gets prescription data, runs in a completely separate Supabase project. Two-POS architecture is unchanged.
 
 ---
 
@@ -231,7 +200,7 @@ The single most important unlock from this meeting. Amazon's review takes 5-14 b
 ### What he does in the meeting (~10 minutes)
 
 ```
-  1. Log into Seller Central (he can do this on his phone or the mini)
+  1. Log into Seller Central (he can do this on his phone or laptop)
   2. Apps & Services → Develop Apps
   3. Click "Register as a developer"
   4. Fill in Developer Profile form:
@@ -343,11 +312,7 @@ These are the "pull specific stuff out of him" questions — the answers shape t
 - **Any spreadsheets you maintain?** (we can import them)
 - **Who has access to your Amazon Seller Central right now?** (baseline for who else touches it)
 
-### Infrastructure questions for the Mac mini
-- **What's the mini's IP / hostname on your network?**
-- **Is the pharmacy internet reliable?** Ever drops for hours? (affects whether we need cloud failover)
-- **Is there a second monitor / keyboard for the mini during setup?**
-- **Who physically has access to the mini at the pharmacy?** (security consideration)
+<!-- 2026-04-30: removed; Mac mini no longer in architecture. -->
 
 ### About Kaleem's preferences
 - **Volume or margin**: if you had to pick, more sales at lower margin or fewer at higher? (tunes the scoring)
@@ -397,7 +362,7 @@ Week 2-3: SP-API credentials + app wiring
 Week 4-6: Real agents + all data sources
  ┌──────────────────────────────────────────────────────────────┐
  │  • Minicrew Linux port lands (external team)                 │
- │  • Install worker on Kaleem's mini                           │
+ │  • Deploy minicrew worker as Render worker service           │
  │  • Keepa subscription active                                 │
  │  • EzriRx EDI onboarded                                      │
  │  • First daily morning briefing in his real Inbox            │
@@ -430,14 +395,17 @@ Month 2-3: $10k-on-Amazon demo
   ──────────────────────────
   Claude API (Opus + Haiku mix)        $200 - $400   ████████████
   Supabase (DB + queue + memory)       $25           █
-  Render (web hosting)                 $20 - $40     ██
+  Render (web service)                 $20 - $40     ██
+  Render (worker service)              $10 - $25     █
+  Render Cron Jobs (~$1/mo each)       $2            █
+  Backblaze B2 (encrypted backups)     $1 - $3       █
   Keepa (Amazon historical data)       $55           ██
   EzriRx (wholesaler aggregator)       $50 - $150    █████
   SMS via Twilio                       $10 - $20     █
   ──────────────────────────────────────────────────────────────
-  TOTAL                                $360 - $690/mo
+  TOTAL                                $373 - $720/mo
 
-  One-time: $0 (his mini, Render subdomain, no domain purchase)
+  One-time: $0 (Render subdomain, no domain purchase, no on-prem hardware needed)
 ```
 
 **The break-even math:** one Tinactin-style arbitrage sale ($51 - $7 cost = $44 margin) covers a full day of running costs. A single good arbitrage week covers the monthly run rate.
