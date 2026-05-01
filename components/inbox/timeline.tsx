@@ -4,11 +4,17 @@ import { Card, CardContent } from '@/components/ui/card';
 
 import { BriefingCard } from './briefing-card';
 
+// `kind` is the executor taxonomy key (e.g. 'list_on_amazon', 'reprice', 'pause_listing').
+// `variant` is the UI button hint. (Renamed from the old `kind: 'primary' | 'secondary'`
+// in Phase 2 — the executor taxonomy needed the `kind` slot.)
 export type ProposedAction = {
   label: string;
-  kind?: 'primary' | 'secondary';
-  payload?: Record<string, unknown>;
+  kind?: string;
+  variant?: 'primary' | 'secondary';
+  params?: Record<string, unknown>;
 };
+
+export type InboxState = 'pending' | 'seen' | 'acted' | 'archived' | 'dismissed';
 
 export type BriefingItem = {
   id: string;
@@ -21,6 +27,13 @@ export type BriefingItem = {
   source_agent?: string | null;
   created_at?: string | null;
   proposed_actions?: ProposedAction[] | null;
+  state?: InboxState;
+  acted_at?: string | null;
+  action_taken?: string | null;
+  // Latest non-undo audit_log row for this inbox_item, if any.
+  audit_log_id?: string | null;
+  undo_window_expires_at?: string | null;
+  undone_at?: string | null;
 };
 
 function dayBucket(iso: string | null | undefined): string {

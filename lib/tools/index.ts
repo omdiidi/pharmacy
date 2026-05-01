@@ -1,4 +1,4 @@
-import type Anthropic from '@anthropic-ai/sdk';
+import type OpenAI from 'openai';
 import { query_products, query_products_def } from '@/lib/tools/query_products';
 import { query_orders, query_orders_def } from '@/lib/tools/query_orders';
 import { search_memory, search_memory_def } from '@/lib/tools/search_memory';
@@ -15,7 +15,7 @@ const registry: Record<string, ToolHandler> = {
   enqueue_job,
 };
 
-export const toolDefinitions: Anthropic.Tool[] = [
+export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   query_products_def,
   query_orders_def,
   search_memory_def,

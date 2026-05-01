@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
-import type Anthropic from '@anthropic-ai/sdk';
+import type OpenAI from 'openai';
 
 const BRIEFING_TYPES = [
   'hot_arbitrage',
@@ -26,18 +26,22 @@ const InputSchema = z.object({
   limit: z.number().int().min(1).max(50).default(20),
 });
 
-export const get_recent_briefings_def: Anthropic.Tool = {
-  name: 'get_recent_briefings',
-  description:
-    "Pull recent briefings (intel posts) from the agents. Use to recap what's happened recently or retrieve a specific briefing's full reasoning.",
-  input_schema: {
-    type: 'object',
-    properties: {
-      types: { type: 'array', items: { type: 'string', enum: BRIEFING_TYPES as unknown as string[] } },
-      urgency_min: { type: 'number', minimum: 1, maximum: 5 },
-      limit: { type: 'number', default: 20 },
+export const get_recent_briefings_def: OpenAI.Chat.Completions.ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'get_recent_briefings',
+    description:
+      "Pull recent briefings (intel posts) from the agents. Use to recap what's happened recently or retrieve a specific briefing's full reasoning.",
+    parameters: {
+      type: 'object',
+      properties: {
+        types: { type: 'array', items: { type: 'string', enum: BRIEFING_TYPES as unknown as string[] } },
+        urgency_min: { type: 'number', minimum: 1, maximum: 5 },
+        limit: { type: 'number', default: 20 },
+      },
+      required: [],
+      additionalProperties: false,
     },
-    required: [],
   },
 };
 

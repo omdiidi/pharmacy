@@ -1,18 +1,25 @@
-import type Anthropic from '@anthropic-ai/sdk';
-import { anthropic } from '@/lib/anthropic';
+import type OpenAI from 'openai';
+import { openrouter, CHATBOT_MODEL, CHATBOT_REASONING_EFFORT } from '@/lib/llm';
 import { toolDefinitions, executeTool } from '@/lib/tools';
 import { buildSystemPrompt } from '@/lib/system-prompt';
 import { requireAuthenticatedUser } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { recordClaudeUsage, getTodayClaudeSpendUsd } from '@/lib/budget';
+import { recordLLMUsage, getTodaySpendUsd } from '@/lib/budget';
+import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const MAX_TOOL_ITERATIONS = 8;
-const MAX_REQUEST_INPUT_TOKENS = 150_000;
-const MAX_DAILY_CLAUDE_SPEND_USD = Number(process.env.MAX_DAILY_CLAUDE_SPEND_USD ?? 50);
-const MODEL = 'claude-opus-4-7';
+const MAX_DAILY_SPEND_USD = Number(process.env.MAX_DAILY_CLAUDE_SPEND_USD ?? 50);
+
+type ChatMessageInput = { role: 'user' | 'assistant' | 'system'; content: string };
+
+type ToolCallAccum = {
+  id: string;
+  name: string;
+  args: string;
+};
 
 export async function POST(req: Request) {
   const session = await requireAuthenticatedUser(req);
@@ -26,14 +33,19 @@ export async function POST(req: Request) {
     });
   }
 
-  // Daily budget guard — must run before the first Claude call.
-  const todaySpend = await getTodayClaudeSpendUsd(session.userId);
-  if (todaySpend >= MAX_DAILY_CLAUDE_SPEND_USD) {
+  const supabase = createClient();
+  const todaySpend = await getTodaySpendUsd(supabase, session.userId);
+  if (todaySpend >= MAX_DAILY_SPEND_USD) {
     return new Response('daily budget exceeded', { status: 429 });
   }
 
-  const { messages } = (await req.json()) as { messages: Anthropic.MessageParam[] };
-  const systemBlocks = await buildSystemPrompt(session);
+  const { messages: clientMessages } = (await req.json()) as { messages: ChatMessageInput[] };
+  const system = await buildSystemPrompt(session);
+
+  const conversation: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+    { role: 'system', content: system },
+    ...clientMessages.map((m) => ({ role: m.role, content: m.content })),
+  ];
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -42,99 +54,120 @@ export async function POST(req: Request) {
         try {
           controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
         } catch {
-          // client disconnected; loop will break on next iteration
+          // client disconnected
         }
       };
 
       try {
-        let conversation: Anthropic.MessageParam[] = messages;
         let iterations = 0;
-        let approxInputTokens = 0;
-
-        const initialCount = await anthropic.messages.countTokens({
-          model: MODEL,
-          system: systemBlocks,
-          tools: toolDefinitions,
-          messages: conversation,
-        });
-        approxInputTokens = initialCount.input_tokens;
-        if (approxInputTokens > MAX_REQUEST_INPUT_TOKENS) {
-          safeEnqueue({ type: 'error', value: 'conversation too long' });
-          controller.close();
-          return;
-        }
 
         while (iterations < MAX_TOOL_ITERATIONS) {
           iterations++;
 
-          const claudeStream = anthropic.messages.stream(
+          const llmStream = await openrouter.chat.completions.create(
             {
-              model: MODEL,
-              max_tokens: 4096,
-              system: systemBlocks,
-              tools: toolDefinitions,
+              model: CHATBOT_MODEL,
               messages: conversation,
-            },
+              tools: toolDefinitions,
+              tool_choice: 'auto',
+              stream: true,
+              stream_options: { include_usage: true },
+              // OpenRouter extension — enables reasoning on Sonnet 4.6
+              reasoning: { effort: CHATBOT_REASONING_EFFORT },
+            } as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming,
             { signal: req.signal },
           );
 
-          for await (const event of claudeStream) {
-            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-              safeEnqueue({ type: 'text_delta', value: event.delta.text });
-            } else if (
-              event.type === 'content_block_start' &&
-              event.content_block.type === 'tool_use'
-            ) {
-              safeEnqueue({
-                type: 'tool_use_start',
-                name: event.content_block.name,
-                id: event.content_block.id,
-              });
+          let textBuffer = '';
+          const toolCalls: Map<number, ToolCallAccum> = new Map();
+          let finishReason: string | null = null;
+          let modelEcho = CHATBOT_MODEL;
+          let lastChunkId = '';
+          let lastUsage: OpenAI.Completions.CompletionUsage | null = null;
+
+          for await (const chunk of llmStream) {
+            lastChunkId = chunk.id || lastChunkId;
+            modelEcho = chunk.model || modelEcho;
+            if (chunk.usage) lastUsage = chunk.usage;
+            const choice = chunk.choices[0];
+            if (!choice) continue;
+
+            const delta = choice.delta;
+            if (delta?.content) {
+              textBuffer += delta.content;
+              safeEnqueue({ type: 'text_delta', value: delta.content });
+            }
+
+            if (delta?.tool_calls) {
+              for (const tc of delta.tool_calls) {
+                const idx = tc.index ?? 0;
+                let accum = toolCalls.get(idx);
+                if (!accum) {
+                  accum = { id: tc.id ?? '', name: tc.function?.name ?? '', args: '' };
+                  toolCalls.set(idx, accum);
+                  if (accum.name) {
+                    safeEnqueue({ type: 'tool_use_start', name: accum.name, id: accum.id });
+                  }
+                } else {
+                  if (tc.id && !accum.id) accum.id = tc.id;
+                  if (tc.function?.name && !accum.name) {
+                    accum.name = tc.function.name;
+                    safeEnqueue({ type: 'tool_use_start', name: accum.name, id: accum.id });
+                  }
+                }
+                if (tc.function?.arguments) accum.args += tc.function.arguments;
+              }
+            }
+
+            if (choice.finish_reason) finishReason = choice.finish_reason;
+          }
+
+          // Record usage for budget tracking
+          if (lastUsage) {
+            try {
+              await recordLLMUsage(supabase, session.userId, {
+                id: lastChunkId,
+                model: modelEcho,
+                usage: lastUsage,
+              } as OpenAI.Chat.Completions.ChatCompletion);
+            } catch (err) {
+              console.warn('[chat] recordLLMUsage failed:', err);
             }
           }
 
-          const finalMessage = await claudeStream.finalMessage();
+          if (finishReason !== 'tool_calls' || toolCalls.size === 0) break;
 
-          // Recording usage must not crash the stream if the row insert fails.
-          try {
-            await recordClaudeUsage(session.userId, finalMessage);
-          } catch (err) {
-            console.warn('[chat] recordClaudeUsage failed:', err);
-          }
-
-          if (finalMessage.stop_reason !== 'tool_use') break;
-
-          const toolUseBlocks = finalMessage.content.filter(
-            (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
-          );
-
-          const toolResults: Anthropic.ToolResultBlockParam[] = await Promise.all(
-            toolUseBlocks.map(async (b) => ({
-              type: 'tool_result' as const,
-              tool_use_id: b.id,
-              content: await executeTool(b.name, b.input, { pharmacyId: session.pharmacyId }),
-            })),
-          );
-
-          conversation = [
-            ...conversation,
-            { role: 'assistant', content: finalMessage.content },
-            { role: 'user', content: toolResults },
-          ];
-
-          const appendedBytes = JSON.stringify(toolResults).length;
-          if (appendedBytes > 10_000) {
-            const recount = await anthropic.messages.countTokens({
-              model: MODEL,
-              system: systemBlocks,
-              tools: toolDefinitions,
-              messages: conversation,
+          // Append the assistant message with tool_calls
+          const assistantToolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] = [];
+          for (const tc of toolCalls.values()) {
+            assistantToolCalls.push({
+              id: tc.id,
+              type: 'function',
+              function: { name: tc.name, arguments: tc.args || '{}' },
             });
-            approxInputTokens = recount.input_tokens;
-            if (approxInputTokens > MAX_REQUEST_INPUT_TOKENS) {
-              safeEnqueue({ type: 'error', value: 'conversation grew past token budget' });
-              break;
+          }
+          conversation.push({
+            role: 'assistant',
+            content: textBuffer || null,
+            tool_calls: assistantToolCalls,
+          });
+
+          // Execute each tool, append results
+          for (const tc of toolCalls.values()) {
+            let parsedInput: unknown;
+            try {
+              parsedInput = JSON.parse(tc.args || '{}');
+            } catch {
+              parsedInput = {};
             }
+            const result = await executeTool(tc.name, parsedInput, {
+              pharmacyId: session.pharmacyId,
+            });
+            conversation.push({
+              role: 'tool',
+              tool_call_id: tc.id,
+              content: result,
+            });
           }
         }
 

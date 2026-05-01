@@ -19,11 +19,6 @@ pool_mode = "transaction"
 default_pool_size = 20
 max_client_conn = 100
 
-[db.extensions]
-pg_trgm = true
-vector = true
-moddatetime = true
-
 [realtime]
 enabled = true
 

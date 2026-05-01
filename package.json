@@ -15,26 +15,28 @@
     "test:watch": "vitest",
     "verify-models": "tsx scripts/verify-models.ts",
     "seed:dev": "tsx scripts/seed-dev-data.ts",
+    "agent:listing": "tsx scripts/listing-agent.ts",
     "worker": "echo 'minicrew worker not yet implemented'"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.30.1",
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-scroll-area": "^1.2.1",
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.4",
     "@sentry/nextjs": "^8.40.0",
-    "@supabase/ssr": "^0.5.2",
+    "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.46.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.460.0",
     "next": "^14.2.18",
+    "openai": "^6.35.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
+    "tsx": "^4.19.2",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -46,9 +48,8 @@
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.18",
     "postcss": "^8.4.49",
-    "supabase": "^1.219.2",
+    "supabase": "^2.98.0",
     "tailwindcss": "^3.4.14",
-    "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vitest": "^2.1.5"
   }

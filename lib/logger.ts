@@ -40,7 +40,7 @@ export function initSentry(): void {
   Sentry.init({
     dsn,
     tracesSampleRate: 0.1,
-    beforeSend: (event) => redact(event) as Sentry.Event,
+    beforeSend: (event) => redact(event) as Sentry.ErrorEvent,
   });
   initialized = true;
 }

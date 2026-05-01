@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
-import type Anthropic from '@anthropic-ai/sdk';
+import type OpenAI from 'openai';
 
 // Reject characters that break PostgREST `or=` parsing OR inject ilike wildcards we don't intend
 const SAFE_QUERY = /^[A-Za-z0-9 \-_.+/]+$/;
@@ -10,17 +10,21 @@ const InputSchema = z.object({
   limit: z.number().int().min(1).max(100).default(20),
 });
 
-export const query_products_def: Anthropic.Tool = {
-  name: 'query_products',
-  description:
-    'Search the pharmacy catalog. Use this when Kaleem asks about specific products by name, NDC, UPC, ASIN, brand, or category.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      query: { type: 'string', description: 'Search term — name, brand, category, NDC, UPC, or ASIN' },
-      limit: { type: 'number', description: 'Max rows to return', default: 20 },
+export const query_products_def: OpenAI.Chat.Completions.ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'query_products',
+    description:
+      "Search the pharmacy catalog. Use this when Kaleem asks about specific products by name, NDC, UPC, ASIN, brand, or category.",
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Search term — name, brand, category, NDC, UPC, or ASIN' },
+        limit: { type: 'number', description: 'Max rows to return', default: 20 },
+      },
+      required: ['query'],
+      additionalProperties: false,
     },
-    required: ['query'],
   },
 };
 

@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
-import type Anthropic from '@anthropic-ai/sdk';
+import type OpenAI from 'openai';
 
 const InputSchema = z.object({
   job_type: z.string().min(1).max(200),
@@ -8,18 +8,22 @@ const InputSchema = z.object({
   priority: z.number().int().min(1).max(10).default(5),
 });
 
-export const enqueue_job_def: Anthropic.Tool = {
-  name: 'enqueue_job',
-  description:
-    'Enqueue a deeper analysis job (e.g. ad-hoc Research Analyst pass on a specific category). Returns the job ID; the result lands in the briefings/inbox when the job completes.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      job_type: { type: 'string', description: 'Job type identifier; pharm: prefix is added if missing' },
-      payload: { type: 'object', description: 'Job-specific payload', additionalProperties: true },
-      priority: { type: 'number', description: '1 (highest) — 10 (lowest)', default: 5 },
+export const enqueue_job_def: OpenAI.Chat.Completions.ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'enqueue_job',
+    description:
+      'Enqueue a deeper analysis job (e.g. ad-hoc Research Analyst pass on a specific category). Returns the job ID; the result lands in the briefings/inbox when the job completes.',
+    parameters: {
+      type: 'object',
+      properties: {
+        job_type: { type: 'string', description: 'Job type identifier; pharm: prefix is added if missing' },
+        payload: { type: 'object', description: 'Job-specific payload', additionalProperties: true },
+        priority: { type: 'number', description: '1 (highest) — 10 (lowest)', default: 5 },
+      },
+      required: ['job_type', 'payload'],
+      additionalProperties: false,
     },
-    required: ['job_type', 'payload'],
   },
 };
 
@@ -35,7 +39,7 @@ export async function enqueue_job(rawInput: unknown, _ctx: { pharmacyId: string 
     .from('jobs')
     .insert({
       job_type: fullJobType,
-      payload,
+      payload: payload as never,
       status: 'pending',
       priority,
     })

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { MailCheck } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { MailCheck, Zap } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -22,17 +22,24 @@ const ERROR_MESSAGES: Record<string, string> = {
   expired: 'That magic link has expired. Request a new one below.',
 };
 
+const IS_DEV = process.env.NODE_ENV !== 'production';
+
 export default function SignInPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const errorKey = searchParams?.get('error') ?? null;
   const errorBanner = errorKey ? ERROR_MESSAGES[errorKey] ?? 'Sign-in failed.' : null;
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(IS_DEV ? 'zomid777@gmail.com' : '');
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  const [devPassword, setDevPassword] = useState('000000');
+  const [devSubmitting, setDevSubmitting] = useState(false);
+  const [devError, setDevError] = useState<string | null>(null);
+
+  async function onSubmitMagicLink(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setFormError(null);
     setSubmitting(true);
@@ -55,6 +62,31 @@ export default function SignInPage() {
       setFormError((err as Error).message ?? 'Failed to send magic link.');
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function onDevLogin(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setDevError(null);
+    setDevSubmitting(true);
+
+    try {
+      const res = await fetch('/api/auth/dev-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password: devPassword }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        setDevError(body.error ?? `Dev login failed (${res.status})`);
+        return;
+      }
+      router.push('/');
+      router.refresh();
+    } catch (err) {
+      setDevError((err as Error).message ?? 'Dev login failed.');
+    } finally {
+      setDevSubmitting(false);
     }
   }
 
@@ -82,10 +114,24 @@ export default function SignInPage() {
                 <div className="text-muted-foreground">
                   We sent a link to <span className="font-mono">{email}</span>.
                 </div>
+                {IS_DEV ? (
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    Local dev: emails go to{' '}
+                    <a
+                      href="http://localhost:54324"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline text-primary"
+                    >
+                      localhost:54324
+                    </a>
+                    , not real inbox.
+                  </div>
+                ) : null}
               </div>
             </div>
           ) : (
-            <form onSubmit={onSubmit} className="space-y-3">
+            <form onSubmit={onSubmitMagicLink} className="space-y-3">
               <Input
                 type="email"
                 value={email}
@@ -93,16 +139,58 @@ export default function SignInPage() {
                 placeholder="you@example.com"
                 required
                 autoFocus
-                disabled={submitting}
+                disabled={submitting || devSubmitting}
               />
               {formError ? (
                 <p className="text-xs text-destructive">{formError}</p>
               ) : null}
-              <Button type="submit" disabled={submitting || !email.trim()} className="w-full">
+              <Button
+                type="submit"
+                disabled={submitting || devSubmitting || !email.trim()}
+                className="w-full"
+              >
                 {submitting ? 'Sending…' : 'Send magic link'}
               </Button>
             </form>
           )}
+
+          {IS_DEV && !sent ? (
+            <>
+              <div className="relative my-2">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">Dev only</span>
+                </div>
+              </div>
+              <form onSubmit={onDevLogin} className="space-y-3">
+                <Input
+                  type="text"
+                  value={devPassword}
+                  onChange={(e) => setDevPassword(e.target.value)}
+                  placeholder="Dev password (default 0000)"
+                  disabled={devSubmitting || submitting}
+                />
+                {devError ? (
+                  <p className="text-xs text-destructive">{devError}</p>
+                ) : null}
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  disabled={devSubmitting || submitting || !email.trim()}
+                  className="w-full"
+                >
+                  <Zap className="h-4 w-4 mr-2" />
+                  {devSubmitting ? 'Signing in…' : 'Quick dev sign-in'}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Skips magic link. Disabled in production. Bypassed by setting{' '}
+                  <span className="font-mono">DEV_PASSWORD</span> in .env.
+                </p>
+              </form>
+            </>
+          ) : null}
         </CardContent>
       </Card>
     </div>

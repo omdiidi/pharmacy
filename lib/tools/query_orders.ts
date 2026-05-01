@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
-import type Anthropic from '@anthropic-ai/sdk';
+import type OpenAI from 'openai';
 
 const InputSchema = z.object({
   status: z.enum(['new', 'ordered_from_supplier', 'shipped', 'delivered', 'returned', 'refunded']).optional(),
@@ -9,22 +9,26 @@ const InputSchema = z.object({
   limit: z.number().int().min(1).max(100).default(50),
 });
 
-export const query_orders_def: Anthropic.Tool = {
-  name: 'query_orders',
-  description:
-    "Search the pharmacy's order history. Use this when Kaleem asks about recent orders, sales, refunds, or fulfillment status.",
-  input_schema: {
-    type: 'object',
-    properties: {
-      status: {
-        type: 'string',
-        enum: ['new', 'ordered_from_supplier', 'shipped', 'delivered', 'returned', 'refunded'],
+export const query_orders_def: OpenAI.Chat.Completions.ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'query_orders',
+    description:
+      "Search the pharmacy's order history. Use this when Kaleem asks about recent orders, sales, refunds, or fulfillment status.",
+    parameters: {
+      type: 'object',
+      properties: {
+        status: {
+          type: 'string',
+          enum: ['new', 'ordered_from_supplier', 'shipped', 'delivered', 'returned', 'refunded'],
+        },
+        platform: { type: 'string', enum: ['amazon', 'ebay', 'own_store'] },
+        since_days: { type: 'number', description: 'Lookback window in days', default: 30 },
+        limit: { type: 'number', default: 50 },
       },
-      platform: { type: 'string', enum: ['amazon', 'ebay', 'own_store'] },
-      since_days: { type: 'number', description: 'Lookback window in days', default: 30 },
-      limit: { type: 'number', default: 50 },
+      required: [],
+      additionalProperties: false,
     },
-    required: [],
   },
 };
 

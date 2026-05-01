@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
-import type { BriefingItem, ProposedAction } from './timeline';
+import type { BriefingItem } from './timeline';
+import { UndoBanner } from './undo-banner';
 
 const urgencyColors: Record<number, string> = {
   1: 'bg-slate-300',
@@ -18,17 +21,89 @@ const urgencyColors: Record<number, string> = {
   5: 'bg-red-500',
 };
 
+function fmtTime(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
+
 export function BriefingCard({ item }: { item: BriefingItem }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [pendingAudit, setPendingAudit] = useState<{
+    id: string;
+    expiresAt: string;
+  } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
   const urgency = Math.max(1, Math.min(5, item.urgency ?? 1));
   const confidencePct = Math.round((item.confidence ?? 0) * 100);
   const created = item.created_at ? new Date(item.created_at) : null;
 
-  const onAction = (action: ProposedAction) => {
-    // Phase 1 placeholder — executor wiring lands in Phase 2.
-    if (typeof window !== 'undefined') {
-      window.alert(`Phase 2: action approval — ${action.label}`);
+  async function approve(actionIndex: number) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/actions/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inbox_item_id: item.id, action_index: actionIndex }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body?.error ?? `approve failed (${res.status})`);
+        setBusy(false);
+        return;
+      }
+      const body = await res.json();
+      setPendingAudit({ id: body.audit_log_id, expiresAt: body.undo_window_expires_at });
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
     }
-  };
+  }
+
+  async function reject() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/actions/reject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inbox_item_id: item.id }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body?.error ?? `reject failed (${res.status})`);
+        setBusy(false);
+        return;
+      }
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // UI state branching:
+  //   pending → action buttons + Reject
+  //   acted + undone → "Reverted at HH:MM"
+  //   acted + window unexpired (and not undone) → UndoBanner
+  //   acted + window expired → "Approved at HH:MM"
+  const isActed = item.state === 'acted';
+  const undoExpiry = item.undo_window_expires_at
+    ? new Date(item.undo_window_expires_at).getTime()
+    : 0;
+  const undoActive = isActed && !item.undone_at && undoExpiry > Date.now() && !!item.audit_log_id;
+  const undone = isActed && !!item.undone_at;
+  const expiredApproved = isActed && !undone && !undoActive;
+
+  // Optimistic "just-approved" banner (before SSR refresh propagates).
+  const showOptimisticUndo =
+    pendingAudit && new Date(pendingAudit.expiresAt).getTime() > Date.now();
 
   return (
     <Card className="transition-shadow hover:shadow-md">
@@ -80,18 +155,54 @@ export function BriefingCard({ item }: { item: BriefingItem }) {
           ) : null}
         </div>
 
-        {item.proposed_actions && item.proposed_actions.length > 0 ? (
+        {error ? <p className="text-xs text-red-600">{error}</p> : null}
+
+        {showOptimisticUndo ? (
+          <UndoBanner
+            auditLogId={pendingAudit!.id}
+            expiresAt={pendingAudit!.expiresAt}
+          />
+        ) : undoActive ? (
+          <UndoBanner
+            auditLogId={item.audit_log_id!}
+            expiresAt={item.undo_window_expires_at!}
+          />
+        ) : undone ? (
+          <p className="text-xs text-muted-foreground italic">
+            Reverted at {fmtTime(item.acted_at)}
+          </p>
+        ) : expiredApproved ? (
+          <p className="text-xs text-muted-foreground italic">
+            Approved at {fmtTime(item.acted_at)}
+          </p>
+        ) : item.state === 'pending' && item.proposed_actions && item.proposed_actions.length > 0 ? (
           <div className="flex flex-wrap gap-2 pt-1">
             {item.proposed_actions.map((action, i) => (
               <Button
                 key={i}
                 size="sm"
-                variant={action.kind === 'primary' ? 'default' : 'outline'}
-                onClick={() => onAction(action)}
+                variant={action.variant === 'primary' ? 'default' : 'outline'}
+                onClick={() => approve(i)}
+                disabled={busy}
               >
                 {action.label}
               </Button>
             ))}
+            <Button
+              key="reject"
+              size="sm"
+              variant="ghost"
+              onClick={reject}
+              disabled={busy}
+            >
+              Reject
+            </Button>
+          </div>
+        ) : item.state === 'pending' ? (
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Button size="sm" variant="ghost" onClick={reject} disabled={busy}>
+              Dismiss
+            </Button>
           </div>
         ) : null}
       </CardContent>

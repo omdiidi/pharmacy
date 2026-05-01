@@ -48,6 +48,9 @@ next-env.d.ts
 *.swp
 *.swo
 
+# Claude Code harness state (project-local)
+.claude/
+
 # Backups (Kaleem's Mac mini local copies land here in prod; never commit)
 backups/
 *.sql.gz

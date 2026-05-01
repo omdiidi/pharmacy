@@ -1,44 +1,54 @@
-import type Anthropic from '@anthropic-ai/sdk';
-import { createClient } from '@/lib/supabase/server';
-import { priceClaudeUsage } from '@/lib/anthropic-pricing';
+import type OpenAI from 'openai';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/lib/supabase/types';
+import { priceLLMUsage } from '@/lib/llm-pricing';
 
-export async function recordClaudeUsage(userId: string, message: Anthropic.Message): Promise<void> {
-  const supabase = createClient();
-  const usage = message.usage;
-  const cost = priceClaudeUsage(message.model, {
-    input_tokens: usage.input_tokens,
-    output_tokens: usage.output_tokens,
-    cache_read_input_tokens: usage.cache_read_input_tokens ?? null,
-    cache_creation_input_tokens: usage.cache_creation_input_tokens ?? null,
-  });
+// userId === null means "system spend" (e.g. cron-run agent). Migration
+// 20260501000001 dropped the NOT NULL on claude_usage.user_id to support this.
+export async function recordLLMUsage(
+  supabase: SupabaseClient<Database>,
+  userId: string | null,
+  completion: OpenAI.Chat.Completions.ChatCompletion,
+): Promise<void> {
+  const usage = completion.usage;
+  if (!usage) return;
+  const cost = priceLLMUsage(completion.model, usage);
 
   const { error } = await supabase.from('claude_usage').insert({
     user_id: userId,
-    request_id: message.id,
-    model: message.model,
-    input_tokens: usage.input_tokens,
-    output_tokens: usage.output_tokens,
-    cache_read_tokens: usage.cache_read_input_tokens ?? 0,
-    cache_creation_tokens: usage.cache_creation_input_tokens ?? 0,
+    request_id: completion.id,
+    model: completion.model,
+    input_tokens: usage.prompt_tokens ?? 0,
+    output_tokens: usage.completion_tokens ?? 0,
+    cache_read_tokens: 0,
+    cache_creation_tokens: 0,
     estimated_cost_usd: cost,
   });
 
   if (error) {
-    // Don't crash the chat stream just because the usage row failed.
-    console.warn('[budget] failed to record claude_usage row:', error.message);
+    console.warn('[budget] failed to record llm_usage row:', error.message);
   }
 }
 
-export async function getTodayClaudeSpendUsd(userId: string): Promise<number> {
-  const supabase = createClient();
+export async function getTodaySpendUsd(
+  supabase: SupabaseClient<Database>,
+  userId: string | null,
+): Promise<number> {
   const startOfTodayUtc = new Date();
   startOfTodayUtc.setUTCHours(0, 0, 0, 0);
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('claude_usage')
     .select('estimated_cost_usd')
-    .eq('user_id', userId)
     .gte('created_at', startOfTodayUtc.toISOString());
+
+  if (userId === null) {
+    query = query.is('user_id', null);
+  } else {
+    query = query.eq('user_id', userId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.warn('[budget] failed to read today spend, treating as 0:', error.message);

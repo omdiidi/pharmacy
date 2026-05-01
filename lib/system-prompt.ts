@@ -1,4 +1,3 @@
-import type Anthropic from '@anthropic-ai/sdk';
 import type { SessionContext } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 
@@ -88,9 +87,7 @@ You have read access to every table in his Supabase DB via the provided tools �
 - Never give medical advice (Kaleem is the licensed pharmacist — flag medical questions to him).
 - Never take destructive actions (no listing changes, no purchases — only information and job enqueue).`;
 
-export async function buildSystemPrompt(
-  session: SessionContext,
-): Promise<Anthropic.TextBlockParam[]> {
+export async function buildSystemPrompt(session: SessionContext): Promise<string> {
   const [pharmacy, preferences, accountHealth, recentBriefings] = await Promise.all([
     getPharmacy(session.pharmacyId),
     getKaleemPreferences(session.pharmacyId),
@@ -98,22 +95,14 @@ export async function buildSystemPrompt(
     getRecentBriefings(session.pharmacyId, 5),
   ]);
 
-  return [
-    {
-      type: 'text',
-      text: COS_PERSONA_TEXT,
-      // cache_control omitted in Phase 1 — persona is too small to benefit from prompt caching.
-    },
-    {
-      type: 'text',
-      text: `# Current pharmacy context
+  const context = `# Current pharmacy context
 ${JSON.stringify({ pharmacy, preferences, accountHealth }, null, 2)}
 
 # Recent briefings (last 5)
 ${recentBriefings.map((b) => `- [${b.created_at}] ${b.summary}`).join('\n')}
 
 # Today
-${new Date().toISOString()}`,
-    },
-  ];
+${new Date().toISOString()}`;
+
+  return `${COS_PERSONA_TEXT}\n\n${context}`;
 }

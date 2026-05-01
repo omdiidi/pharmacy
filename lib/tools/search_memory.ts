@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
-import type Anthropic from '@anthropic-ai/sdk';
+import type OpenAI from 'openai';
 
 const InputSchema = z.object({
   query: z.string().min(1).max(500),
@@ -8,18 +8,22 @@ const InputSchema = z.object({
   k: z.number().int().min(1).max(50).default(10),
 });
 
-export const search_memory_def: Anthropic.Tool = {
-  name: 'search_memory',
-  description:
-    'Search across agent memory (episodic decisions + outcomes, procedural playbooks, semantic facts, Kaleem preferences). Use this to recall prior context about a topic.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      query: { type: 'string' },
-      memory_type: { type: 'string', enum: ['episodic', 'procedural', 'semantic', 'preferences'] },
-      k: { type: 'number', default: 10 },
+export const search_memory_def: OpenAI.Chat.Completions.ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'search_memory',
+    description:
+      'Search across agent memory (episodic decisions + outcomes, procedural playbooks, semantic facts, Kaleem preferences). Use this to recall prior context about a topic.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string' },
+        memory_type: { type: 'string', enum: ['episodic', 'procedural', 'semantic', 'preferences'] },
+        k: { type: 'number', default: 10 },
+      },
+      required: ['query'],
+      additionalProperties: false,
     },
-    required: ['query'],
   },
 };
 
@@ -34,7 +38,7 @@ export async function search_memory(rawInput: unknown, ctx: { pharmacyId: string
   const { data, error } = await supabase.rpc('search_memory_text', {
     q: query,
     pharmacy: ctx.pharmacyId,
-    kind_filter: memory_type ?? null,
+    kind_filter: memory_type,
     k,
   });
 

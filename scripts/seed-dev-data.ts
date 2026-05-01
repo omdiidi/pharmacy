@@ -173,8 +173,18 @@ const MEMORY: MemoryRow[] = [
   },
 ];
 
+// proposed_actions on briefings is a jsonb array; use this loose type so the
+// supabase-js generic accepts the assigned shape.
+type ProposedActionFixture = {
+  label: string;
+  variant: 'primary' | 'secondary';
+  kind: string;
+  params: Record<string, unknown>;
+};
+
 type BriefingSeed = {
   briefing_type:
+    | 'new_opportunity'
     | 'hot_arbitrage'
     | 'reprice_down'
     | 'account_health';
@@ -184,9 +194,50 @@ type BriefingSeed = {
   rationale: string;
   confidence: number;
   urgency: number;
+  // null = no approve action — only the Reject button surfaces in the card.
+  proposedActions: ProposedActionFixture[] | null;
+  // Marker so we can substitute product_id at insert time, after products are seeded.
+  productSlot?: 'first_watching' | 'second_watching';
 };
 
+// Convenience: which ASIN we want each briefing's action to target. Resolved
+// to product_id after the products insert/upsert loop.
+const FIRST_WATCHING_ASIN = 'B001GKPASE'; // Omega-3 Fish Oil (slot 2 of PRODUCTS, watchlist='watching')
+const SECOND_WATCHING_ASIN = 'B000BD0RT0'; // Magnesium Glycinate (slot 4, watchlist='watching')
+
 const BRIEFINGS: BriefingSeed[] = [
+  // Phase 2 Layer 2 demo: a listing-agent fixture targeting the first watching product.
+  {
+    briefing_type: 'new_opportunity',
+    source_agent: 'listing_agent',
+    title: 'List Omega-3 Fish Oil 1000mg on Amazon',
+    summary:
+      'Nordic Naturals Omega-3 1000mg 120ct is on the watchlist with no active listing. Suggested starting price $32.99.',
+    rationale:
+      'Brand is reseller-friendly; pack-size aligns with typical Amazon SKUs. Sanity-check Buy Box before approving — agent had no live BB feed.',
+    confidence: 0.7,
+    urgency: 3,
+    productSlot: 'first_watching',
+    proposedActions: [
+      {
+        label: 'List on Amazon',
+        variant: 'primary',
+        kind: 'list_on_amazon',
+        params: {
+          // product_id resolved at insert time
+          proposed_title: 'Nordic Naturals Omega-3 Fish Oil 1000mg Softgel 120ct',
+          proposed_bullets: [
+            'High-potency omega-3 fish oil softgels',
+            'Lemon flavor; 120-count value pack',
+            'Third-party tested for purity',
+          ],
+          proposed_price: 32.99,
+          reasoning:
+            'Watchlisted product with no active listing; brand is reseller-safe. Starting price aligned with typical Buy Box for this SKU.',
+        },
+      },
+    ],
+  },
   {
     briefing_type: 'hot_arbitrage',
     source_agent: 'research_analyst',
@@ -198,6 +249,26 @@ const BRIEFINGS: BriefingSeed[] = [
       'Keepa shows FBA stock-out at 02:14 UTC. Last 3 stock-outs lasted 3-7 days. Pharmavite is not the brand; no IP risk. Recommend list now at $34.99.',
     confidence: 0.78,
     urgency: 4,
+    productSlot: 'second_watching',
+    proposedActions: [
+      {
+        label: 'List on Amazon',
+        variant: 'primary',
+        kind: 'list_on_amazon',
+        params: {
+          // product_id resolved at insert time
+          proposed_title: "Doctor's Best Magnesium Glycinate 400mg 240ct Tablets",
+          proposed_bullets: [
+            'High-absorption magnesium glycinate; 400mg per serving',
+            '240-count value pack',
+            'Non-GMO and gluten-free',
+          ],
+          proposed_price: 34.99,
+          reasoning:
+            'FBA stock-out window; FBM Buy Box at $34.99 with healthy margin over ABC cost.',
+        },
+      },
+    ],
   },
   {
     briefing_type: 'reprice_down',
@@ -209,6 +280,8 @@ const BRIEFINGS: BriefingSeed[] = [
       'Three competing FBM listings repriced down within 90 minutes. Held inventory will not move at $51. Drop to $34 to stay in second-position consideration set.',
     confidence: 0.65,
     urgency: 2,
+    // No approve action — Repricer executor lands in Layer 3. Only Reject button surfaces.
+    proposedActions: null,
   },
   {
     briefing_type: 'account_health',
@@ -220,6 +293,8 @@ const BRIEFINGS: BriefingSeed[] = [
       'All metrics inside Amazon thresholds; trailing 30-day trend stable. Continue current dispatch SLA and tracking-upload cadence.',
     confidence: 0.95,
     urgency: 1,
+    // Account-health fixture is informational; only Reject (acknowledge) surfaces.
+    proposedActions: null,
   },
 ];
 
@@ -229,12 +304,21 @@ async function main() {
   // -------------------------------------------------------------------------
   // Products — upsert on (pharmacy_id, asin)
   // -------------------------------------------------------------------------
-  const { error: prodErr } = await supabase
-    .from('products')
-    .upsert(PRODUCTS, { onConflict: 'pharmacy_id,asin', ignoreDuplicates: true });
-  if (prodErr) {
-    console.error('[seed] products error:', prodErr);
-    process.exit(1);
+  let prodInserted = 0;
+  for (const p of PRODUCTS) {
+    const { data: existing } = await supabase
+      .from('products')
+      .select('id')
+      .eq('pharmacy_id', p.pharmacy_id)
+      .eq('asin', p.asin!)
+      .limit(1);
+    if (existing && existing.length > 0) continue;
+    const { error } = await supabase.from('products').insert(p);
+    if (error) {
+      console.error('[seed] products insert error:', error);
+      process.exit(1);
+    }
+    prodInserted++;
   }
 
   // -------------------------------------------------------------------------
@@ -259,6 +343,25 @@ async function main() {
   }
 
   // -------------------------------------------------------------------------
+  // Resolve product UUIDs for fixtures that reference watchlisted products.
+  // -------------------------------------------------------------------------
+  const slotAsin: Record<NonNullable<BriefingSeed['productSlot']>, string> = {
+    first_watching: FIRST_WATCHING_ASIN,
+    second_watching: SECOND_WATCHING_ASIN,
+  };
+  const productIdByAsin = new Map<string, string>();
+  for (const asin of Object.values(slotAsin)) {
+    const { data: row } = await supabase
+      .from('products')
+      .select('id')
+      .eq('pharmacy_id', PHARMACY_ID)
+      .eq('asin', asin)
+      .limit(1)
+      .maybeSingle();
+    if (row?.id) productIdByAsin.set(asin, row.id);
+  }
+
+  // -------------------------------------------------------------------------
   // Briefings + matching inbox_items.
   // -------------------------------------------------------------------------
   let briefingsInserted = 0;
@@ -273,10 +376,37 @@ async function main() {
 
     let briefingId: string | undefined = existing?.[0]?.id;
 
+    // Materialize proposed_actions, substituting product_id for the targeted slot.
+    let proposedActions: ProposedActionFixture[] | null = b.proposedActions;
+    if (proposedActions && b.productSlot) {
+      const asin = slotAsin[b.productSlot];
+      const productId = productIdByAsin.get(asin);
+      if (!productId) {
+        console.warn(
+          `[seed] could not resolve product_id for asin ${asin}; skipping briefing "${b.title}"`,
+        );
+        continue;
+      }
+      proposedActions = proposedActions.map((action) => ({
+        ...action,
+        params: { ...action.params, product_id: productId },
+      }));
+    }
+
     if (!briefingId) {
       const { data: inserted, error } = await supabase
         .from('briefings')
-        .insert({ pharmacy_id: PHARMACY_ID, ...b })
+        .insert({
+          pharmacy_id: PHARMACY_ID,
+          briefing_type: b.briefing_type,
+          source_agent: b.source_agent,
+          title: b.title,
+          summary: b.summary,
+          rationale: b.rationale,
+          confidence: b.confidence,
+          urgency: b.urgency,
+          proposed_actions: proposedActions,
+        })
         .select('id')
         .single();
       if (error || !inserted) {
@@ -285,6 +415,15 @@ async function main() {
       }
       briefingId = inserted.id;
       briefingsInserted += 1;
+    } else {
+      // Update existing briefing's proposed_actions in case the fixture changed.
+      const { error: updErr } = await supabase
+        .from('briefings')
+        .update({ proposed_actions: proposedActions })
+        .eq('id', briefingId);
+      if (updErr) {
+        console.warn('[seed] briefing update (proposed_actions) failed:', updErr.message);
+      }
     }
 
     const { data: existingInbox } = await supabase
@@ -308,7 +447,7 @@ async function main() {
   }
 
   console.log(
-    `[seed] Inserted ${PRODUCTS.length} products, ${memInserted} memory rows, ${briefingsInserted} briefings, ${inboxInserted} inbox_items.`
+    `[seed] Inserted ${prodInserted} products, ${memInserted} memory rows, ${briefingsInserted} briefings, ${inboxInserted} inbox_items.`
   );
 }
 

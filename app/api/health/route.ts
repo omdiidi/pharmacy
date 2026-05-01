@@ -18,17 +18,17 @@ export async function GET() {
     dbError = err instanceof Error ? err.message : String(err);
   }
 
-  // Don't actually call Anthropic — costs money. Presence of API key is enough.
-  const anthropicOk = !!process.env.ANTHROPIC_API_KEY;
+  // Don't actually call OpenRouter — costs money. Presence of API key is enough.
+  const llmOk = !!process.env.OPENROUTER_API_KEY;
 
-  const ok = dbOk && anthropicOk;
+  const ok = dbOk && llmOk;
   const body = {
     ok,
     now,
     db: dbOk ? { ok: true } : { ok: false, error: dbError ?? 'unknown error' },
-    anthropic: anthropicOk
-      ? { ok: true }
-      : { ok: false, error: 'ANTHROPIC_API_KEY not set' },
+    llm: llmOk
+      ? { ok: true, provider: 'openrouter' }
+      : { ok: false, error: 'OPENROUTER_API_KEY not set' },
   };
 
   return NextResponse.json(body, { status: ok ? 200 : 503 });

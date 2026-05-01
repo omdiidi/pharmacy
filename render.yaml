@@ -30,6 +30,20 @@ services:
   #   envVars:
   #     - fromGroup: pharm1-shared
 
+  # --- Listing Agent (Phase 2 — daily cron, Layer 2) ------------------------
+  # Reads watchlisted products and emits "list this on Amazon" briefings.
+  # Stubbed: approval inserts pending_listings; real SP-API call lands later.
+  - type: cron
+    name: pharm1-listing-agent
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm ci
+    schedule: "0 13 * * *"  # daily 13:00 UTC = 6am Pacific
+    startCommand: npm run agent:listing
+    envVars:
+      - fromGroup: pharm1-shared
+
   # --- Weekly encrypted backup → Backblaze B2 --------------------------------
   - type: cron
     name: pharm1-backup-weekly
@@ -65,7 +79,11 @@ services:
 envVarGroups:
   - name: pharm1-shared
     envVars:
-      - key: ANTHROPIC_API_KEY
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_APP_NAME
+        value: "PharmaDash"
+      - key: OPENROUTER_APP_URL
         sync: false
       - key: NEXT_PUBLIC_SUPABASE_URL
         sync: false

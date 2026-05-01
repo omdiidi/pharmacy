@@ -1,24 +1,31 @@
 # minicrew-config/config.yaml
 # Authored in Phase 1; runs when the Linux minicrew port lands.
+# All models routed through OpenRouter (provider: openrouter, base URL openrouter.ai/api/v1).
 
 project: pharm1
+provider: openrouter
+provider_base_url: https://openrouter.ai/api/v1
 supabase:
   url: ${SUPABASE_URL}
   service_role_key: ${SUPABASE_SERVICE_ROLE_KEY}
 
 logging:
   redact_env:
-    - ANTHROPIC_API_KEY
+    - OPENROUTER_API_KEY
     - SUPABASE_SERVICE_ROLE_KEY
     - KEEPA_API_KEY
     - AMAZON_SP_API_REFRESH_TOKEN
 
+# Tier map (cost-optimized via OpenRouter):
+#   high-think  → anthropic/claude-sonnet-4.6  (was Opus; ~5x cheaper, reasoning enabled)
+#   medium      → anthropic/claude-sonnet-4.6
+#   fast/cheap  → x-ai/grok-4.3                (was Haiku; ~4x cheaper)
 job_types:
   pharm:research-analyst:
     skill: pharm:research-analyst
-    model: claude-opus-4-7
-    thinking_budget: high
-    mode: fan_out                 # fan-out across category archetypes
+    model: anthropic/claude-sonnet-4.6
+    reasoning_effort: high
+    mode: fan_out
     groups:
       - allergy
       - immune_cold_flu
@@ -33,48 +40,44 @@ job_types:
 
   pharm:repricer-sweep:
     skill: pharm:repricer
-    model: claude-sonnet-4-6
-    thinking_budget: medium
+    model: anthropic/claude-sonnet-4.6
+    reasoning_effort: medium
     idle_watchdog_minutes: 20
 
   pharm:fulfillment-source:
     skill: pharm:fulfillment-ops
-    model: claude-haiku-4-5
-    thinking_budget: low
+    model: x-ai/grok-4.3
     idle_watchdog_minutes: 10
 
   pharm:account-health:
     skill: pharm:account-health
-    model: claude-haiku-4-5
-    thinking_budget: low
+    model: x-ai/grok-4.3
     idle_watchdog_minutes: 15
 
   pharm:customer-triage:
     skill: pharm:customer-triage
-    model: claude-haiku-4-5
-    thinking_budget: none
+    model: x-ai/grok-4.3
     idle_watchdog_minutes: 5
 
   pharm:customer-draft:
     skill: pharm:customer-draft
-    model: claude-sonnet-4-6
-    thinking_budget: medium
+    model: anthropic/claude-sonnet-4.6
+    reasoning_effort: medium
     idle_watchdog_minutes: 15
 
   pharm:bookkeeper:
     skill: pharm:bookkeeper
-    model: claude-haiku-4-5
-    thinking_budget: medium
+    model: x-ai/grok-4.3
     idle_watchdog_minutes: 30
 
   pharm:portfolio-manager:
     skill: pharm:portfolio-manager
-    model: claude-opus-4-7
-    thinking_budget: high
+    model: anthropic/claude-sonnet-4.6
+    reasoning_effort: high
     idle_watchdog_minutes: 60
 
   pharm:reflector:
     skill: pharm:reflector
-    model: claude-opus-4-7
-    thinking_budget: high
+    model: anthropic/claude-sonnet-4.6
+    reasoning_effort: high
     idle_watchdog_minutes: 90
