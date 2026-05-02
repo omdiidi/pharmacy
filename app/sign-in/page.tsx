@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MailCheck, Zap } from 'lucide-react';
 
@@ -25,6 +25,14 @@ const ERROR_MESSAGES: Record<string, string> = {
 const IS_DEV = process.env.NODE_ENV !== 'production';
 
 export default function SignInPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignInPageInner />
+    </Suspense>
+  );
+}
+
+function SignInPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const errorKey = searchParams?.get('error') ?? null;
