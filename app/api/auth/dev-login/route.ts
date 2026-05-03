@@ -10,8 +10,14 @@ const DEV_PASSWORD = process.env.DEV_PASSWORD ?? '000000';
 const DEFAULT_PHARMACY_ID = '00000000-0000-0000-0000-000000000001';
 
 export async function POST(req: Request) {
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'dev-login disabled in production' }, { status: 403 });
+  // Gate on explicit env flag so we can keep this enabled on the Render demo
+  // (single-user, password + ALLOWED_USER_EMAILS as the access controls) but
+  // disabled by default in any environment that doesn't opt in.
+  const devLoginEnabled =
+    process.env.DEV_LOGIN_ENABLED === 'true' ||
+    process.env.NODE_ENV !== 'production';
+  if (!devLoginEnabled) {
+    return NextResponse.json({ error: 'dev-login disabled' }, { status: 403 });
   }
 
   const { email, password } = (await req.json()) as { email?: string; password?: string };

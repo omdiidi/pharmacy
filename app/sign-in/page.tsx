@@ -22,7 +22,9 @@ const ERROR_MESSAGES: Record<string, string> = {
   expired: 'That magic link has expired. Request a new one below.',
 };
 
-const IS_DEV = process.env.NODE_ENV !== 'production';
+const IS_DEV =
+  process.env.NODE_ENV !== 'production' ||
+  process.env.NEXT_PUBLIC_DEV_LOGIN_ENABLED === 'true';
 
 export default function SignInPage() {
   return (

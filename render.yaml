@@ -111,3 +111,10 @@ envVarGroups:
         sync: false
       - key: MAX_DAILY_CLAUDE_SPEND_USD
         value: "50"
+      # Demo-only: lets the password sign-in flow at /api/auth/dev-login
+      # work in production. Single-user, gated by ALLOWED_USER_EMAILS +
+      # DEV_PASSWORD. Set to "false" or remove for a real launch.
+      - key: DEV_LOGIN_ENABLED
+        value: "true"
+      - key: NEXT_PUBLIC_DEV_LOGIN_ENABLED
+        value: "true"
