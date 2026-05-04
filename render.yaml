@@ -44,6 +44,43 @@ services:
     envVars:
       - fromGroup: pharm1-shared
 
+  # --- Bookkeeper (Phase 2 Wave 1 — daily P&L reconciliation) ---------------
+  - type: cron
+    name: pharm1-bookkeeper
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm ci
+    schedule: "0 23 * * *"   # daily 23:00 UTC
+    startCommand: npm run agent:bookkeeper
+    envVars:
+      - fromGroup: pharm1-shared
+
+  # --- Portfolio Manager (Phase 2 Wave 1 — weekly strategic review) ---------
+  - type: cron
+    name: pharm1-portfolio-manager
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm ci
+    schedule: "0 7 * * 0"    # Sundays 07:00 UTC
+    startCommand: npm run agent:portfolio-manager
+    envVars:
+      - fromGroup: pharm1-shared
+
+  # --- Reflector (Phase 2 Wave 1 — weekly distillation into memory) ---------
+  # 30 min after Bookkeeper on Sunday to avoid claude_usage write race.
+  - type: cron
+    name: pharm1-reflector
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm ci
+    schedule: "30 23 * * 0"  # Sundays 23:30 UTC
+    startCommand: npm run agent:reflector
+    envVars:
+      - fromGroup: pharm1-shared
+
   # --- Weekly encrypted backup → Backblaze B2 --------------------------------
   - type: cron
     name: pharm1-backup-weekly

@@ -16,6 +16,9 @@
     "verify-models": "tsx scripts/verify-models.ts",
     "seed:dev": "tsx scripts/seed-dev-data.ts",
     "agent:listing": "tsx scripts/listing-agent.ts",
+    "agent:bookkeeper": "tsx scripts/bookkeeper.ts",
+    "agent:reflector": "tsx scripts/reflector.ts",
+    "agent:portfolio-manager": "tsx scripts/portfolio-manager.ts",
     "worker": "echo 'minicrew worker not yet implemented'"
   },
   "dependencies": {

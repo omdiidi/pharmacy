@@ -48,6 +48,31 @@ function dayBucket(iso: string | null | undefined): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+function agentLabel(source: string | null | undefined): string {
+  switch (source) {
+    case 'bookkeeper':
+      return 'Bookkeeper';
+    case 'reflector':
+      return 'Reflector';
+    case 'portfolio_manager':
+      return 'Portfolio Manager';
+    case 'listing_agent':
+      return 'Listing Agent';
+    case 'repricer':
+      return 'Repricer';
+    case 'research_analyst':
+      return 'Research Analyst';
+    case 'account_health':
+      return 'Account Health';
+    case 'fulfillment_ops':
+      return 'Fulfillment Ops';
+    case 'customer_success':
+      return 'Customer Success';
+    default:
+      return source ?? 'Unknown agent';
+  }
+}
+
 export function Timeline({ items }: { items: BriefingItem[] }) {
   if (!items || items.length === 0) {
     return (
@@ -66,28 +91,51 @@ export function Timeline({ items }: { items: BriefingItem[] }) {
     );
   }
 
-  const groups = new Map<string, BriefingItem[]>();
+  // Group by source_agent first (latest-briefing-in-section descending), then
+  // by day-bucket inside each agent section.
+  const byAgent = new Map<string, Map<string, BriefingItem[]>>();
+  const agentLatest = new Map<string, number>();
   for (const item of items) {
-    const key = dayBucket(item.created_at);
-    const arr = groups.get(key) ?? [];
-    arr.push(item);
-    groups.set(key, arr);
+    const a = item.source_agent ?? 'unknown';
+    const d = dayBucket(item.created_at);
+    const inner = byAgent.get(a) ?? new Map<string, BriefingItem[]>();
+    const dayArr = inner.get(d) ?? [];
+    dayArr.push(item);
+    inner.set(d, dayArr);
+    byAgent.set(a, inner);
+    const t = item.created_at ? new Date(item.created_at).getTime() : 0;
+    if (!agentLatest.has(a) || (agentLatest.get(a) ?? 0) < t) {
+      agentLatest.set(a, t);
+    }
   }
+  const orderedAgents = Array.from(byAgent.keys()).sort(
+    (a, b) => (agentLatest.get(b) ?? 0) - (agentLatest.get(a) ?? 0),
+  );
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
-      {Array.from(groups.entries()).map(([day, dayItems]) => (
-        <section key={day} className="space-y-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {day}
-          </h2>
-          <div className="space-y-3">
-            {dayItems.map((item) => (
-              <BriefingCard key={item.id} item={item} />
+    <div className="mx-auto max-w-3xl space-y-10">
+      {orderedAgents.map((agent) => {
+        const inner = byAgent.get(agent)!;
+        return (
+          <section key={agent} className="space-y-4">
+            <h2 className="text-sm font-semibold tracking-wide text-foreground">
+              {agentLabel(agent)}
+            </h2>
+            {Array.from(inner.entries()).map(([day, dayItems]) => (
+              <div key={day} className="space-y-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {day}
+                </h3>
+                <div className="space-y-3">
+                  {dayItems.map((item) => (
+                    <BriefingCard key={item.id} item={item} />
+                  ))}
+                </div>
+              </div>
             ))}
-          </div>
-        </section>
-      ))}
+          </section>
+        );
+      })}
     </div>
   );
 }

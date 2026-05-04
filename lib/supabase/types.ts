@@ -117,7 +117,9 @@ export type Database = {
           loa_document_url: string | null
           loa_expires_at: string | null
           notes: string | null
+          paused_until: string | null
           pharmacy_id: string | null
+          prior_status: Database["public"]["Enums"]["brand_auth_status"] | null
           status: Database["public"]["Enums"]["brand_auth_status"]
           updated_at: string | null
         }
@@ -129,7 +131,9 @@ export type Database = {
           loa_document_url?: string | null
           loa_expires_at?: string | null
           notes?: string | null
+          paused_until?: string | null
           pharmacy_id?: string | null
+          prior_status?: Database["public"]["Enums"]["brand_auth_status"] | null
           status?: Database["public"]["Enums"]["brand_auth_status"]
           updated_at?: string | null
         }
@@ -141,7 +145,9 @@ export type Database = {
           loa_document_url?: string | null
           loa_expires_at?: string | null
           notes?: string | null
+          paused_until?: string | null
           pharmacy_id?: string | null
+          prior_status?: Database["public"]["Enums"]["brand_auth_status"] | null
           status?: Database["public"]["Enums"]["brand_auth_status"]
           updated_at?: string | null
         }
@@ -1179,6 +1185,7 @@ export type Database = {
         | "hunts_resellers"
         | "transparency_enrolled"
         | "unknown"
+        | "paused"
       briefing_type:
         | "hot_arbitrage"
         | "new_opportunity"
@@ -1878,6 +1885,7 @@ export const Constants = {
         "hunts_resellers",
         "transparency_enrolled",
         "unknown",
+        "paused",
       ],
       briefing_type: [
         "hot_arbitrage",

@@ -1,18 +1,23 @@
 // Listing Agent — single-pass LLM call per candidate.
 // Pure logic; the cron entry at scripts/listing-agent.ts is a thin wrapper.
 
-import path from 'node:path';
-import { readFile } from 'node:fs/promises';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type OpenAI from 'openai';
 import { z } from 'zod';
 
 import type { Database, Json } from '@/lib/supabase/types';
 import { openrouter } from '@/lib/llm';
-import { recordLLMUsage, getTodaySpendUsd } from '@/lib/budget';
+import { recordLLMUsage } from '@/lib/budget';
+import {
+  AGENT_MODEL,
+  DEFAULT_PHARMACY_ID,
+  callAgentLLM,
+  dailyBudgetGate,
+  loadSkillPrompt,
+  stripJsonFence,
+} from './_shared';
 
-export const LISTING_AGENT_MODEL = 'anthropic/claude-sonnet-4.6';
-const DEFAULT_PHARMACY_ID = '00000000-0000-0000-0000-000000000001';
+export const LISTING_AGENT_MODEL = AGENT_MODEL;
 
 const ListingAgentOutputSchema = z.object({
   title: z.string().nullable().optional(),
@@ -48,12 +53,8 @@ export async function runListingAgent(
   const maxCandidates = opts.maxCandidates ?? 5;
   const pharmacyId = opts.pharmacyId ?? DEFAULT_PHARMACY_ID;
 
-  const cap = Number(process.env.MAX_DAILY_CLAUDE_SPEND_USD ?? 50);
-  const today = await getTodaySpendUsd(supabase, null);
-  if (today >= cap) {
-    console.log(`[listing-agent] daily cap reached: $${today} >= $${cap}; exiting`);
-    return { proposed: 0, skipped: 0, capped: true };
-  }
+  const gate = await dailyBudgetGate(supabase, 'listing-agent');
+  if (gate.capped) return { proposed: 0, skipped: 0, capped: true };
 
   const { data: candidates, error: candErr } = await supabase
     .from('products')
@@ -89,8 +90,7 @@ export async function runListingAgent(
     return { proposed: 0, skipped: 0, capped: false };
   }
 
-  const skillPath = path.resolve(__dirname, '../../minicrew-config/skills/listing-agent.md');
-  const skill = await readFile(skillPath, 'utf8');
+  const skill = await loadSkillPrompt('listing-agent');
 
   // Pull the Kaleem preferences memory row once.
   const { data: prefMemory } = await supabase
@@ -143,16 +143,12 @@ export async function runListingAgent(
 
     let completion: OpenAI.Chat.Completions.ChatCompletion;
     try {
-      completion = await openrouter.chat.completions.create({
+      completion = await callAgentLLM(openrouter, {
         model: LISTING_AGENT_MODEL,
-        messages: [
-          { role: 'system', content: skill },
-          { role: 'user', content: JSON.stringify(userPayload) },
-        ],
-        response_format: { type: 'json_object' },
-        // OpenRouter extension — same cast pattern as app/api/chat/route.ts.
-        reasoning: { effort: 'medium' },
-      } as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming);
+        reasoningEffort: 'medium',
+        systemPrompt: skill,
+        userPayload,
+      });
     } catch (err) {
       console.warn(
         `[listing-agent] LLM call failed for product ${product.id}:`,
@@ -165,13 +161,7 @@ export async function runListingAgent(
     await recordLLMUsage(supabase, null, completion);
 
     const raw = completion.choices[0]?.message?.content ?? '{}';
-    // Sonnet 4.6 occasionally wraps the JSON in ```json fences even with
-    // response_format: json_object set — strip them defensively.
-    const stripped = raw
-      .trim()
-      .replace(/^```(?:json)?\s*/i, '')
-      .replace(/```\s*$/i, '')
-      .trim();
+    const stripped = stripJsonFence(raw);
     let parsed: z.infer<typeof ListingAgentOutputSchema>;
     try {
       parsed = ListingAgentOutputSchema.parse(JSON.parse(stripped));

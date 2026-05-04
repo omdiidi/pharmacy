@@ -201,7 +201,14 @@ export function BriefingCard({ item }: { item: BriefingItem }) {
         ) : item.state === 'pending' ? (
           <div className="flex flex-wrap gap-2 pt-1">
             <Button size="sm" variant="ghost" onClick={reject} disabled={busy}>
-              Dismiss
+              {(() => {
+                const isReportOnly =
+                  item.source_agent === 'bookkeeper' ||
+                  item.source_agent === 'reflector' ||
+                  (item.source_agent === 'portfolio_manager' &&
+                    (!item.proposed_actions || item.proposed_actions.length === 0));
+                return isReportOnly ? 'Acknowledge' : 'Dismiss';
+              })()}
             </Button>
           </div>
         ) : null}
