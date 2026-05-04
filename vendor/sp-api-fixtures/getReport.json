@@ -1,0 +1,16 @@
+{
+  "examples": [
+    {
+      "request": {},
+      "response": {
+        "body": {
+          "reportId": "fixture-report-id",
+          "reportType": "GET_V1_SELLER_PERFORMANCE_REPORT",
+          "processingStatus": "DONE",
+          "reportDocumentId": "fixture-report-document-id",
+          "createdTime": "2026-05-04T05:00:00.000Z"
+        }
+      }
+    }
+  ]
+}

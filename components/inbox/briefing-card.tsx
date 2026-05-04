@@ -206,6 +206,8 @@ export function BriefingCard({ item }: { item: BriefingItem }) {
                   item.source_agent === 'bookkeeper' ||
                   item.source_agent === 'reflector' ||
                   (item.source_agent === 'portfolio_manager' &&
+                    (!item.proposed_actions || item.proposed_actions.length === 0)) ||
+                  (item.source_agent === 'account_health' &&
                     (!item.proposed_actions || item.proposed_actions.length === 0));
                 return isReportOnly ? 'Acknowledge' : 'Dismiss';
               })()}

@@ -1,0 +1,8 @@
+{
+  "odr": 0.005,
+  "late_ship_rate": 0.02,
+  "cancellation_rate": 0.01,
+  "vtr": 0.97,
+  "buybox_pct": 0.75,
+  "captured_at": "2026-05-04T05:00:00.000Z"
+}

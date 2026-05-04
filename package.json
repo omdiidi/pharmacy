@@ -19,6 +19,10 @@
     "agent:bookkeeper": "tsx scripts/bookkeeper.ts",
     "agent:reflector": "tsx scripts/reflector.ts",
     "agent:portfolio-manager": "tsx scripts/portfolio-manager.ts",
+    "agent:repricer": "tsx scripts/repricer.ts",
+    "agent:account-health": "tsx scripts/account-health.ts",
+    "agent:cs-test": "tsx scripts/customer-success-test.ts",
+    "fixtures:extract": "tsx scripts/extract-sp-api-fixtures.ts",
     "worker": "echo 'minicrew worker not yet implemented'"
   },
   "dependencies": {
@@ -40,6 +44,7 @@
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
     "tsx": "^4.19.2",
+    "twilio": "^6.0.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

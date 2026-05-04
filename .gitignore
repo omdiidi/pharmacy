@@ -56,6 +56,10 @@ backups/
 *.sql.gz
 *.sql.gz.gpg
 
+# Vendored SP-API OpenAPI models (downloaded by scripts/extract-sp-api-fixtures.ts).
+# Only the *extracted fixtures* under vendor/sp-api-fixtures/ are committed.
+vendor/sp-api-models/
+
 # Claude Code / agent scratch — keep planning artifacts, ignore everything else
 tmp/*
 !tmp/briefs/

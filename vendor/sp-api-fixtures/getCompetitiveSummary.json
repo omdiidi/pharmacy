@@ -1,0 +1,38 @@
+{
+  "examples": [
+    {
+      "request": {},
+      "response": {
+        "body": {
+          "responses": [
+            {
+              "asin": "B00FIXTUREASIN",
+              "marketplaceId": "ATVPDKIKX0DER",
+              "featuredBuyingOptions": [
+                {
+                  "segmentedFeaturedOffers": [
+                    {
+                      "listingPrice": {
+                        "amount": 19.99,
+                        "currencyCode": "USD"
+                      },
+                      "shippingOptions": [
+                        {
+                          "shippingOptionType": "DEFAULT",
+                          "price": {
+                            "amount": 0,
+                            "currencyCode": "USD"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

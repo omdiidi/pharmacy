@@ -1,0 +1,14 @@
+{
+  "examples": [
+    {
+      "request": {},
+      "response": {
+        "body": {
+          "sku": "fixture-sku",
+          "status": "ACCEPTED",
+          "submissionId": "fixture-submission-id"
+        }
+      }
+    }
+  ]
+}

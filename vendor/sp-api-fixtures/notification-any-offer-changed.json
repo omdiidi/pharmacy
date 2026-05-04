@@ -1,0 +1,49 @@
+{
+  "NotificationVersion": "1.0",
+  "NotificationType": "ANY_OFFER_CHANGED",
+  "PayloadVersion": "1.0",
+  "EventTime": "2026-05-04T13:00:00.000Z",
+  "Payload": {
+    "AnyOfferChangedNotification": {
+      "SellerId": "A1B2C3D4E5F6G7",
+      "OfferChangeTrigger": {
+        "MarketplaceId": "ATVPDKIKX0DER",
+        "ASIN": "B00FIXTUREASIN",
+        "ItemCondition": "new",
+        "TimeOfOfferChange": "2026-05-04T12:59:50.000Z"
+      },
+      "Summary": {
+        "NumberOfOffers": [
+          {
+            "OfferCount": 3,
+            "condition": "new",
+            "fulfillmentChannel": "Amazon"
+          }
+        ],
+        "BuyBoxPrices": [
+          {
+            "condition": "new",
+            "LandedPrice": {
+              "Amount": 19.99,
+              "CurrencyCode": "USD"
+            },
+            "ListingPrice": {
+              "Amount": 19.99,
+              "CurrencyCode": "USD"
+            },
+            "Shipping": {
+              "Amount": 0,
+              "CurrencyCode": "USD"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "NotificationMetadata": {
+    "ApplicationId": "amzn1.sp.solution.fixture",
+    "SubscriptionId": "fixture-subscription-id",
+    "PublishTime": "2026-05-04T13:00:00.000Z",
+    "NotificationId": "fixture-notif-aoc-001"
+  }
+}

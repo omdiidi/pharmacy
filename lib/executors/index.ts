@@ -6,6 +6,10 @@ import { addToWatchlist } from './add-to-watchlist';
 import { pauseBrand } from './pause-brand';
 import { flagAnomaly } from './flag-anomaly';
 import { dismissBriefing } from './dismiss-briefing';
+import { repriceListing } from './reprice-listing';
+import { pauseListing } from './pause-listing';
+import { sendReply } from './send-reply';
+import { acknowledgeHealthAlert } from './acknowledge-health-alert';
 import { type Executor, UnknownExecutorError } from './types';
 
 const registry: Record<string, Executor> = {
@@ -14,6 +18,10 @@ const registry: Record<string, Executor> = {
   pause_brand: pauseBrand,
   flag_anomaly: flagAnomaly,
   dismiss_briefing: dismissBriefing,
+  reprice: repriceListing,
+  pause_listing: pauseListing,
+  send_reply: sendReply,
+  acknowledge_health_alert: acknowledgeHealthAlert,
 };
 
 export function getExecutor(kind: string): Executor {

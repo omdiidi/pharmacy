@@ -1,0 +1,13 @@
+{
+  "examples": [
+    {
+      "request": {},
+      "response": {
+        "body": {
+          "reportDocumentId": "fixture-report-document-id",
+          "url": "https://example.invalid/fixture-report-presigned-url"
+        }
+      }
+    }
+  ]
+}

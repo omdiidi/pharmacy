@@ -1,0 +1,12 @@
+{
+  "examples": [
+    {
+      "request": {},
+      "response": {
+        "body": {
+          "reportId": "fixture-report-id"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "examples": [
+    {
+      "request": {},
+      "response": {
+        "body": {
+          "sku": "fixture-sku",
+          "attributes": {
+            "item_name": [
+              {
+                "value": "Fixture OTC Product"
+              }
+            ]
+          },
+          "offers": [
+            {
+              "price": {
+                "currency": "USD",
+                "amount": 19.99
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

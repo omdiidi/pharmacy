@@ -1,0 +1,15 @@
+{
+  "examples": [
+    {
+      "request": {},
+      "response": {
+        "body": {
+          "payload": {
+            "destinationId": "fixture-destination",
+            "name": "pharm1-destination"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -81,6 +81,32 @@ services:
     envVars:
       - fromGroup: pharm1-shared
 
+  # --- Repricer (Phase 2 Wave 2 — twice-daily reprice sweep) ----------------
+  # Staggered 1h after pharm1-listing-agent (13:00 UTC) to avoid back-to-back
+  # serial execution on Render's cron queue. Propose-only forever.
+  - type: cron
+    name: pharm1-repricer
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm ci
+    schedule: "0 14,2 * * *"
+    startCommand: npm run agent:repricer
+    envVars:
+      - fromGroup: pharm1-shared
+
+  # --- Account Health (Phase 2 Wave 2 — daily 6am UTC; auto-pause on red) ---
+  - type: cron
+    name: pharm1-account-health
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm ci
+    schedule: "0 6 * * *"
+    startCommand: npm run agent:account-health
+    envVars:
+      - fromGroup: pharm1-shared
+
   # --- Weekly encrypted backup → Backblaze B2 --------------------------------
   - type: cron
     name: pharm1-backup-weekly
@@ -155,3 +181,27 @@ envVarGroups:
         value: "true"
       - key: NEXT_PUBLIC_DEV_LOGIN_ENABLED
         value: "true"
+      # --- Wave 2: Amazon SP-API (cred-gated; agents fall back to fixtures when unset) ---
+      - key: LWA_CLIENT_ID
+        sync: false
+      - key: LWA_CLIENT_SECRET
+        sync: false
+      - key: SP_API_REFRESH_TOKEN
+        sync: false
+      - key: SP_API_REGION
+        value: "na"
+      - key: SP_API_MARKETPLACE_ID
+        value: "ATVPDKIKX0DER"
+      - key: SP_API_SELLER_ID
+        sync: false
+      - key: SP_API_WEBHOOK_SECRET
+        sync: false
+      # --- Wave 2: Twilio SMS (Account Health red-alert; cred-gated) ---
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false
+      - key: KALEEM_SMS_NUMBER
+        sync: false

@@ -24,7 +24,10 @@ export function stripJsonFence(raw: string): string {
 }
 
 export async function loadSkillPrompt(name: string): Promise<string> {
-  const skillPath = path.resolve(__dirname, '../../minicrew-config/skills', `${name}.md`);
+  // process.cwd() resolves to the project root for both tsx cron entries and
+  // Next.js API routes. __dirname under Next's webpack bundle resolves to
+  // .next/server/app/... and would 404.
+  const skillPath = path.resolve(process.cwd(), 'minicrew-config/skills', `${name}.md`);
   return await readFile(skillPath, 'utf8');
 }
 

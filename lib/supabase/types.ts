@@ -699,6 +699,212 @@ export type Database = {
           },
         ]
       }
+      pending_pricing_changes: {
+        Row: {
+          applied_at: string | null
+          audit_log_id: string | null
+          cancelled_at: string | null
+          created_at: string
+          decision: string
+          from_price: number | null
+          id: string
+          listing_id: string
+          pharmacy_id: string
+          reasoning: string | null
+          sp_api_submission_id: string | null
+          status: string
+          to_price: number | null
+          trigger: string
+        }
+        Insert: {
+          applied_at?: string | null
+          audit_log_id?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          decision: string
+          from_price?: number | null
+          id?: string
+          listing_id: string
+          pharmacy_id: string
+          reasoning?: string | null
+          sp_api_submission_id?: string | null
+          status?: string
+          to_price?: number | null
+          trigger: string
+        }
+        Update: {
+          applied_at?: string | null
+          audit_log_id?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          decision?: string
+          from_price?: number | null
+          id?: string
+          listing_id?: string
+          pharmacy_id?: string
+          reasoning?: string | null
+          sp_api_submission_id?: string | null
+          status?: string
+          to_price?: number | null
+          trigger?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_pricing_changes_audit_log_id_fkey"
+            columns: ["audit_log_id"]
+            isOneToOne: false
+            referencedRelation: "audit_log"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_pricing_changes_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_pricing_changes_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pending_customer_messages: {
+        Row: {
+          amazon_order_id: string | null
+          audit_log_id: string | null
+          cancelled_at: string | null
+          channel: string
+          classification: string
+          created_at: string
+          customer_message_id: string | null
+          id: string
+          pharmacy_id: string
+          proposed_text: string
+          reasoning: string | null
+          sent_at: string | null
+          sp_api_message_id: string | null
+          status: string
+        }
+        Insert: {
+          amazon_order_id?: string | null
+          audit_log_id?: string | null
+          cancelled_at?: string | null
+          channel?: string
+          classification: string
+          created_at?: string
+          customer_message_id?: string | null
+          id?: string
+          pharmacy_id: string
+          proposed_text: string
+          reasoning?: string | null
+          sent_at?: string | null
+          sp_api_message_id?: string | null
+          status?: string
+        }
+        Update: {
+          amazon_order_id?: string | null
+          audit_log_id?: string | null
+          cancelled_at?: string | null
+          channel?: string
+          classification?: string
+          created_at?: string
+          customer_message_id?: string | null
+          id?: string
+          pharmacy_id?: string
+          proposed_text?: string
+          reasoning?: string | null
+          sent_at?: string | null
+          sp_api_message_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_customer_messages_audit_log_id_fkey"
+            columns: ["audit_log_id"]
+            isOneToOne: false
+            referencedRelation: "audit_log"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_customer_messages_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pending_health_actions: {
+        Row: {
+          action_kind: string
+          applied_at: string | null
+          audit_log_id: string | null
+          cancelled_at: string | null
+          created_at: string
+          id: string
+          listing_id: string | null
+          pharmacy_id: string
+          reasoning: string | null
+          sp_api_submission_id: string | null
+          status: string
+          triggered_by: string
+        }
+        Insert: {
+          action_kind: string
+          applied_at?: string | null
+          audit_log_id?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          id?: string
+          listing_id?: string | null
+          pharmacy_id: string
+          reasoning?: string | null
+          sp_api_submission_id?: string | null
+          status?: string
+          triggered_by: string
+        }
+        Update: {
+          action_kind?: string
+          applied_at?: string | null
+          audit_log_id?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          id?: string
+          listing_id?: string | null
+          pharmacy_id?: string
+          reasoning?: string | null
+          sp_api_submission_id?: string | null
+          status?: string
+          triggered_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_health_actions_audit_log_id_fkey"
+            columns: ["audit_log_id"]
+            isOneToOne: false
+            referencedRelation: "audit_log"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_health_actions_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_health_actions_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pharmacies: {
         Row: {
           address: Json | null

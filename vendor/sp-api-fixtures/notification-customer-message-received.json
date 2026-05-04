@@ -1,0 +1,22 @@
+{
+  "NotificationVersion": "1.0",
+  "NotificationType": "CUSTOMER_MESSAGE_RECEIVED",
+  "PayloadVersion": "1.0",
+  "EventTime": "2026-05-04T15:30:00.000Z",
+  "Payload": {
+    "CustomerMessageReceivedNotification": {
+      "Message": {
+        "customer_message_id": "fixture-msg-001",
+        "amazon_order_id": "111-1234567-1234567",
+        "customer_text": "Hi, when will my order ship? It's been 3 days.",
+        "channel": "amazon"
+      }
+    }
+  },
+  "NotificationMetadata": {
+    "ApplicationId": "pharm1.internal",
+    "SubscriptionId": "fixture-subscription-id",
+    "PublishTime": "2026-05-04T15:30:00.000Z",
+    "NotificationId": "fixture-notif-cmr-001"
+  }
+}

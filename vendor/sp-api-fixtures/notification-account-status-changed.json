@@ -1,0 +1,21 @@
+{
+  "NotificationVersion": "1.0",
+  "NotificationType": "ACCOUNT_STATUS_CHANGED",
+  "PayloadVersion": "1.0",
+  "EventTime": "2026-05-04T06:00:00.000Z",
+  "Payload": {
+    "AccountStatusChangedNotification": {
+      "AccountId": "A1B2C3D4E5F6G7",
+      "MarketplaceId": "ATVPDKIKX0DER",
+      "PreviousStatus": "NORMAL",
+      "CurrentStatus": "AT_RISK",
+      "ChangeTime": "2026-05-04T05:59:00.000Z"
+    }
+  },
+  "NotificationMetadata": {
+    "ApplicationId": "amzn1.sp.solution.fixture",
+    "SubscriptionId": "fixture-subscription-id",
+    "PublishTime": "2026-05-04T06:00:00.000Z",
+    "NotificationId": "fixture-notif-asc-001"
+  }
+}

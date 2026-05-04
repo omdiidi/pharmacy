@@ -7,6 +7,10 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
   'anthropic/claude-sonnet-4.6': { inputPerM: 3.0, outputPerM: 15.0 },
   // OpenRouter sometimes echoes upstream model id (date-stamped) rather than the slug.
   'anthropic/claude-4.6-sonnet-20260217': { inputPerM: 3.0, outputPerM: 15.0 },
+  // Wave 2: Haiku 4.5 used by Customer Success Triage stage (fast classify).
+  'anthropic/claude-haiku-4.5': { inputPerM: 1.0, outputPerM: 5.0 },
+  // OpenRouter date-stamped echo for Haiku 4.5 (verified via probe 2026-05-04).
+  'anthropic/claude-4.5-haiku-20251001': { inputPerM: 1.0, outputPerM: 5.0 },
   'x-ai/grok-4.3': { inputPerM: 0.5, outputPerM: 2.0 },
   'inception/mercury-2': { inputPerM: 0.25, outputPerM: 1.0 },
 };

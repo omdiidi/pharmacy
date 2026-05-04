@@ -1,0 +1,16 @@
+{
+  "examples": [
+    {
+      "request": {},
+      "response": {
+        "body": {
+          "payload": {
+            "subscriptionId": "fixture-subscription-id",
+            "payloadVersion": "1.0",
+            "destinationId": "fixture-destination"
+          }
+        }
+      }
+    }
+  ]
+}

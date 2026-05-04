@@ -32,7 +32,8 @@ export async function middleware(req: NextRequest) {
   return res;
 }
 
-// Matcher excludes public routes: /sign-in, /api/auth/*, /api/health, Next internals, favicon.
+// Matcher excludes public routes: /sign-in, /api/auth/*, /api/health,
+// /api/sp-api/* (HMAC-verified), Next internals, favicon.
 export const config = {
-  matcher: ['/((?!api/auth|api/health|sign-in|_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!api/auth|api/health|api/sp-api|sign-in|_next/static|_next/image|favicon.ico).*)'],
 };

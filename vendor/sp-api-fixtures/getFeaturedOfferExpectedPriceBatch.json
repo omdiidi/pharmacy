@@ -1,0 +1,36 @@
+{
+  "examples": [
+    {
+      "request": {},
+      "response": {
+        "body": {
+          "responses": [
+            {
+              "status": {
+                "statusCode": 200,
+                "reasonPhrase": "Success"
+              },
+              "body": {
+                "offerIdentifier": {
+                  "marketplaceId": "ATVPDKIKX0DER",
+                  "sku": "fixture-sku"
+                },
+                "featuredOfferExpectedPriceResults": [
+                  {
+                    "featuredOfferExpectedPrice": {
+                      "listingPrice": {
+                        "currencyCode": "USD",
+                        "amount": 19.99
+                      }
+                    },
+                    "resultStatus": "VALID_FOEP"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
