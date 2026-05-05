@@ -13,6 +13,7 @@ import { requireAuthenticatedUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { getExecutor } from '@/lib/executors';
 import { Sentry } from '@/lib/logger';
+import { checkRateLimit } from '@/lib/rate-limit';
 import type { Json } from '@/lib/supabase/types';
 
 export const runtime = 'nodejs';
@@ -23,6 +24,14 @@ const Body = z.object({ audit_log_id: z.string().uuid() });
 export async function POST(req: Request) {
   const session = await requireAuthenticatedUser(req);
   if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const rl = await checkRateLimit(`actions:${session.userId}`, { window: 60_000, max: 60 });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'rate-limited' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSeconds) } },
+    );
+  }
 
   let body: z.infer<typeof Body>;
   try {

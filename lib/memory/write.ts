@@ -7,6 +7,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@/lib/supabase/types';
 import { embed, VOYAGE_EMBEDDING_MODEL } from '@/lib/voyage/embed';
+import { Sentry } from '@/lib/logger';
 
 export type MemoryKind = 'episodic' | 'procedural' | 'semantic' | 'preferences';
 
@@ -83,6 +84,7 @@ export async function writeMemory(
       '[memory.write] embed step exception:',
       err instanceof Error ? err.message : err,
     );
+    Sentry.captureException(err, { tags: { stage: 'memory-embed' } });
   }
 
   return { id: data.id, inserted: true };

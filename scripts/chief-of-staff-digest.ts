@@ -4,16 +4,24 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { runChiefOfStaffDigest } from '@/lib/agents/chief-of-staff-digest';
+import { withSentry } from '@/lib/observability';
+import { withCronLock } from '@/lib/cron-lock';
+import { Sentry } from '@/lib/logger';
 
 async function main() {
   const supabase = createAdminClient();
-  const result = await runChiefOfStaffDigest(supabase);
-  console.log(
-    `[digest] done — briefing_id=${result.briefing_id} skipped=${result.skipped} capped=${result.capped}`,
+  await withSentry('chief-of-staff-digest', () =>
+    withCronLock(supabase, 'chief-of-staff-digest', async () => {
+      const result = await runChiefOfStaffDigest(supabase);
+      console.log(
+        `[digest] done — briefing_id=${result.briefing_id} skipped=${result.skipped} capped=${result.capped}`,
+      );
+    }),
   );
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
   console.error('[digest] fatal:', err);
+  await Sentry.flush(2000);
   process.exit(1);
 });

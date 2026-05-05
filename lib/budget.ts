@@ -2,6 +2,15 @@ import type OpenAI from 'openai';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase/types';
 import { priceLLMUsage } from '@/lib/llm-pricing';
+import { Sentry } from '@/lib/logger';
+
+// Phase 3 hardening: track consecutive insert failures and escalate to
+// Sentry as level=error every 5 failures, rate-limited to once per 5 min.
+// We deliberately do NOT throw — that would feedback-loop with the webhook
+// 5xx path (failed insert → throw → 5xx → SP-API replay → new run → more
+// failed inserts).
+let consecutiveFailures = 0;
+let lastEscalation = 0;
 
 // userId === null means "system spend" (e.g. cron-run agent). Migration
 // 20260501000001 dropped the NOT NULL on claude_usage.user_id to support this.
@@ -26,7 +35,17 @@ export async function recordLLMUsage(
   });
 
   if (error) {
+    consecutiveFailures += 1;
     console.warn('[budget] failed to record llm_usage row:', error.message);
+    if (consecutiveFailures % 5 === 0 && Date.now() - lastEscalation > 5 * 60_000) {
+      Sentry.captureMessage(
+        `[budget] ${consecutiveFailures} consecutive claude_usage insert failures`,
+        { level: 'error', tags: { stage: 'recordLLMUsage' } },
+      );
+      lastEscalation = Date.now();
+    }
+  } else {
+    consecutiveFailures = 0;
   }
 }
 

@@ -8,6 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@/lib/supabase/types';
 import { openrouter } from '@/lib/llm';
 import { recordLLMUsage } from '@/lib/budget';
+import { Sentry } from '@/lib/logger';
 import {
   AGENT_MODEL,
   DEFAULT_PHARMACY_ID,
@@ -123,7 +124,13 @@ export async function runBookkeeper(
   await recordLLMUsage(supabase, null, completion);
 
   const raw = completion.choices[0]?.message?.content ?? '{}';
-  const parsed = OutputSchema.parse(JSON.parse(stripJsonFence(raw)));
+  let parsed: z.infer<typeof OutputSchema>;
+  try {
+    parsed = OutputSchema.parse(JSON.parse(stripJsonFence(raw)));
+  } catch (err) {
+    Sentry.captureException(err, { tags: { agent: 'bookkeeper', stage: 'parse' } });
+    return { briefing_id: null, capped: false };
+  }
 
   const summary =
     `${parsed.date}: net $${parsed.net.toFixed(2)} ` +

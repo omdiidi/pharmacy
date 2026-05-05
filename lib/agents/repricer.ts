@@ -43,6 +43,7 @@ export type RepricerResult = {
   proposed: number;
   capped: boolean;
   evaluated?: number;
+  skipped?: string;
 };
 
 type ListingRow = {
@@ -72,7 +73,10 @@ function extractAsinFromEvent(event: unknown): string | null {
   const aoc = env.Payload?.AnyOfferChangedNotification as
     | { OfferChangeTrigger?: { ASIN?: string } }
     | undefined;
-  return aoc?.OfferChangeTrigger?.ASIN ?? null;
+  const mfn = env.Payload?.ListingsItemMfnQuantityChangeNotification as
+    | { ASIN?: string }
+    | undefined;
+  return aoc?.OfferChangeTrigger?.ASIN ?? mfn?.ASIN ?? null;
 }
 
 export async function runRepricer(
@@ -100,7 +104,15 @@ export async function runRepricer(
 
   if (trigger === 'event') {
     const asin = extractAsinFromEvent(opts.event);
-    if (asin) q = q.eq('products.asin', asin);
+    if (asin === null) {
+      // Phase 3 hardening: don't fan out to a full watchlist scan when the
+      // webhook envelope shape is unparseable. The webhook layer 5xxs and
+      // SP-API replays — we'd otherwise reprice every active listing per
+      // malformed event.
+      console.warn('[repricer] event mode but no ASIN extracted; skipping run');
+      return { proposed: 0, capped: false, evaluated: 0, skipped: 'unparseable_event' };
+    }
+    q = q.eq('products.asin', asin);
   }
 
   const { data: listings, error: lErr } = await q.limit(limit);

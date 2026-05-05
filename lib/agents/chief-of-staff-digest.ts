@@ -37,6 +37,7 @@ type BriefingRow = {
   urgency: number | null;
   confidence: number | null;
   created_at: string | null;
+  auto_executed: boolean | null;
 };
 
 export async function runChiefOfStaffDigest(
@@ -52,7 +53,7 @@ export async function runChiefOfStaffDigest(
   const { data: briefings } = await supabase
     .from('briefings')
     .select(
-      'id, source_agent, briefing_type, title, summary, urgency, confidence, created_at',
+      'id, source_agent, briefing_type, title, summary, urgency, confidence, created_at, auto_executed',
     )
     .eq('pharmacy_id', pharmacyId)
     .neq('source_agent', 'chief_of_staff_digest')
@@ -65,12 +66,29 @@ export async function runChiefOfStaffDigest(
     return { briefing_id: null, capped: false, skipped: true };
   }
 
+  // Phase 3 hardening: filter out auto_executed briefings (system-actioned —
+  // not human-decision-relevant) and surface only urgent/account-health-red
+  // briefings as digest tops.
+  const recent = briefings as BriefingRow[];
+  // NOTE: plan said `briefing_type === 'account_health_red'` but the enum
+  // actually uses `account_health` (Wave 2 + Phase 1 schema). We honor the
+  // spirit by matching the actual enum value plus the urgency threshold.
+  const top = recent
+    .filter((b) => !b.auto_executed)
+    .filter(
+      (b) => (b.urgency ?? 1) >= 4 || b.briefing_type === 'account_health',
+    );
+
   const byAgent: Record<string, { count: number; top: BriefingRow[] }> = {};
-  for (const b of briefings as BriefingRow[]) {
+  for (const b of recent) {
     const agent = b.source_agent ?? 'unknown';
     if (!byAgent[agent]) byAgent[agent] = { count: 0, top: [] };
     byAgent[agent].count++;
-    if ((b.urgency ?? 0) >= 4) byAgent[agent].top.push(b);
+  }
+  for (const b of top) {
+    const agent = b.source_agent ?? 'unknown';
+    if (!byAgent[agent]) byAgent[agent] = { count: 0, top: [] };
+    byAgent[agent].top.push(b);
   }
 
   const skill = await loadSkillPrompt('chief-of-staff-digest');

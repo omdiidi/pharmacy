@@ -20,6 +20,7 @@ import {
   PortfolioManagerOutputSchema,
   ProposedActionSchema,
 } from './portfolio-manager-output-adapter';
+import { Sentry } from '@/lib/logger';
 
 export type PortfolioManagerResult = {
   briefing_id: string | null;
@@ -111,7 +112,13 @@ export async function runPortfolioManager(
   await recordLLMUsage(supabase, null, completion);
 
   const raw = completion.choices[0]?.message?.content ?? '{}';
-  const parsed = PortfolioManagerOutputSchema.parse(JSON.parse(stripJsonFence(raw)));
+  let parsed: ReturnType<typeof PortfolioManagerOutputSchema.parse>;
+  try {
+    parsed = PortfolioManagerOutputSchema.parse(JSON.parse(stripJsonFence(raw)));
+  } catch (err) {
+    Sentry.captureException(err, { tags: { agent: 'portfolio-manager', stage: 'parse' } });
+    return { briefing_id: null, capped: false };
+  }
 
   const proposed_actions: Array<{
     label: string;

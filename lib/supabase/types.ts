@@ -225,6 +225,7 @@ export type Database = {
           input_tokens: number
           model: string
           output_tokens: number
+          pharmacy_id: string | null
           request_id: string | null
           user_id: string | null
         }
@@ -237,6 +238,7 @@ export type Database = {
           input_tokens?: number
           model: string
           output_tokens?: number
+          pharmacy_id?: string | null
           request_id?: string | null
           user_id?: string | null
         }
@@ -249,8 +251,69 @@ export type Database = {
           input_tokens?: number
           model?: string
           output_tokens?: number
+          pharmacy_id?: string | null
           request_id?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      cron_locks: {
+        Row: {
+          agent_name: string
+          locked_at: string
+          expires_at: string
+          worker_id: string
+        }
+        Insert: {
+          agent_name: string
+          locked_at?: string
+          expires_at: string
+          worker_id: string
+        }
+        Update: {
+          agent_name?: string
+          locked_at?: string
+          expires_at?: string
+          worker_id?: string
+        }
+        Relationships: []
+      }
+      rate_limit_events: {
+        Row: {
+          id: number
+          key: string
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          key: string
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          key?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      webhook_dedupe: {
+        Row: {
+          notification_id: string
+          notification_type: string
+          received_at: string
+          expires_at: string
+        }
+        Insert: {
+          notification_id: string
+          notification_type: string
+          received_at?: string
+          expires_at?: string
+        }
+        Update: {
+          notification_id?: string
+          notification_type?: string
+          received_at?: string
+          expires_at?: string
         }
         Relationships: []
       }
@@ -358,6 +421,7 @@ export type Database = {
           max_attempts: number | null
           mcp_bundle_id: string | null
           payload: Json
+          pharmacy_id: string | null
           priority: number
           progress: Json | null
           requested_status: string | null
@@ -383,6 +447,7 @@ export type Database = {
           max_attempts?: number | null
           mcp_bundle_id?: string | null
           payload?: Json
+          pharmacy_id?: string | null
           priority?: number
           progress?: Json | null
           requested_status?: string | null
@@ -408,6 +473,7 @@ export type Database = {
           max_attempts?: number | null
           mcp_bundle_id?: string | null
           payload?: Json
+          pharmacy_id?: string | null
           priority?: number
           progress?: Json | null
           requested_status?: string | null
@@ -1424,6 +1490,7 @@ export type Database = {
           max_attempts: number | null
           mcp_bundle_id: string | null
           payload: Json
+          pharmacy_id: string | null
           priority: number
           progress: Json | null
           requested_status: string | null
@@ -1441,6 +1508,26 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      claim_cron_lock: {
+        Args: {
+          p_agent_name: string
+          p_worker_id: string
+          p_ttl_minutes?: number
+        }
+        Returns: boolean
+      }
+      release_cron_lock: {
+        Args: { p_agent_name: string; p_worker_id: string }
+        Returns: boolean
+      }
+      purge_webhook_dedupe: {
+        Args: Record<string, never>
+        Returns: number
+      }
+      purge_rate_limit_events: {
+        Args: Record<string, never>
+        Returns: number
       }
       dispatch_attach_bundles: {
         Args: {

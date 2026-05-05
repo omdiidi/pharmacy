@@ -30,6 +30,9 @@
     "fda:smoke": "tsx scripts/fda-smoke.ts",
     "keepa:token": "tsx scripts/keepa-token-probe.ts",
     "fixtures:extract": "tsx scripts/extract-sp-api-fixtures.ts",
+    "cron:rate-limit-purge": "tsx scripts/cron/rate-limit-purge.ts",
+    "cron:webhook-dedupe-purge": "tsx scripts/cron/webhook-dedupe-purge.ts",
+    "test:cron-lock": "tsx scripts/test-cron-lock.ts",
     "worker": "echo 'minicrew worker not yet implemented'"
   },
   "dependencies": {

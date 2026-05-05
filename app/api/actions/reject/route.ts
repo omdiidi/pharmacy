@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAuthenticatedUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,6 +19,14 @@ const Body = z.object({
 export async function POST(req: Request) {
   const session = await requireAuthenticatedUser(req);
   if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const rl = await checkRateLimit(`actions:${session.userId}`, { window: 60_000, max: 60 });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'rate-limited' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSeconds) } },
+    );
+  }
 
   let body: z.infer<typeof Body>;
   try {

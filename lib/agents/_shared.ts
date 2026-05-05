@@ -36,8 +36,7 @@ export async function dailyBudgetGate(
   agentName: string,
 ): Promise<{ capped: boolean; today: number; cap: number }> {
   if (!process.env.OPENROUTER_API_KEY) {
-    console.error(`[${agentName}] OPENROUTER_API_KEY missing; cron exiting`);
-    process.exit(2);
+    throw new Error(`[${agentName}] OPENROUTER_API_KEY not set`);
   }
   const rawCap = process.env.MAX_DAILY_CLAUDE_SPEND_USD;
   // Empty-string env var must fall back to default 50 — Number('') === 0 would
@@ -77,14 +76,29 @@ export async function callAgentLLM(
     args.systemPrompt +
     JSON_ONLY_SUFFIX +
     (args.jsonOutputSchema ? `\n\nExpected JSON shape:\n${args.jsonOutputSchema}` : '');
-  return await openrouter.chat.completions.create({
-    model: args.model ?? AGENT_MODEL,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: JSON.stringify(args.userPayload) },
-    ],
-    response_format: { type: 'json_object' },
-    // OpenRouter extension — same cast pattern as listing-agent.ts.
-    reasoning: { effort: args.reasoningEffort ?? 'medium' },
-  } as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming);
+
+  // Phase 3 hardening: 60s ceiling on the OpenRouter call so a stuck
+  // upstream cannot pin a cron worker indefinitely. The cron-lock TTL is
+  // a backstop, but an in-flight network request can hold the lock until
+  // OS-level keepalive timeout (~2h on Linux defaults).
+  const TIMEOUT_MS = 60_000;
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), TIMEOUT_MS);
+  try {
+    return await openrouter.chat.completions.create(
+      {
+        model: args.model ?? AGENT_MODEL,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: JSON.stringify(args.userPayload) },
+        ],
+        response_format: { type: 'json_object' },
+        // OpenRouter extension — same cast pattern as listing-agent.ts.
+        reasoning: { effort: args.reasoningEffort ?? 'medium' },
+      } as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming,
+      { signal: ac.signal },
+    );
+  } finally {
+    clearTimeout(timer);
+  }
 }

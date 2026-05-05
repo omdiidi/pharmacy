@@ -5,6 +5,12 @@
 //
 // Auth: HMAC-SHA256 hex digest of the raw request body, header
 // `x-pharm1-signature`. Constant-time comparison via timingSafeEqual.
+//
+// Phase 3 hardening adds:
+//   - Replay-window check using NotificationMetadata.PublishTime (5 min skew).
+//     No custom `x-pharm1-timestamp` header — clock comes from envelope body.
+//   - NotificationId dedupe via webhook_dedupe table (24h TTL purge daily).
+//   - 5xx returned on agent error so SP-API retries (at-least-once semantics).
 
 import { NextResponse } from 'next/server';
 import { createHmac, timingSafeEqual } from 'node:crypto';
@@ -13,6 +19,7 @@ import { runRepricer } from '@/lib/agents/repricer';
 import { runAccountHealth } from '@/lib/agents/account-health';
 import { runCustomerSuccess } from '@/lib/agents/customer-success';
 import { runFulfillmentOps } from '@/lib/agents/fulfillment-ops';
+import { captureRouteFatal } from '@/lib/observability';
 import type { NotificationEnvelope } from '@/lib/sp-api';
 
 export const runtime = 'nodejs';
@@ -48,8 +55,37 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'invalid-json' }, { status: 400 });
   }
 
-  const supabase = createAdminClient();
+  // Replay defense via NotificationMetadata.PublishTime (no custom header).
+  const publishTime = env.NotificationMetadata?.PublishTime;
+  const ts = publishTime ? Date.parse(publishTime) : NaN;
+  if (!Number.isFinite(ts) || Math.abs(Date.now() - ts) > 5 * 60_000) {
+    return NextResponse.json(
+      { error: 'envelope-publish-time-out-of-window' },
+      { status: 401 },
+    );
+  }
 
+  // NotificationId dedupe.
+  const notificationId = env.NotificationMetadata?.NotificationId;
+  if (!notificationId) {
+    return NextResponse.json({ error: 'missing-notification-id' }, { status: 400 });
+  }
+
+  const supabase = createAdminClient();
+  const { error: dedupeErr } = await supabase
+    .from('webhook_dedupe')
+    .insert({ notification_id: notificationId, notification_type: env.NotificationType });
+
+  if (dedupeErr?.code === '23505') {
+    // Already processed — ack 200 so SP-API stops retrying this NotificationId.
+    return NextResponse.json({ ok: true, deduped: true });
+  }
+  if (dedupeErr) {
+    captureRouteFatal(dedupeErr, 'sp-api-webhook', { notification_id: notificationId });
+    return NextResponse.json({ error: 'dedupe-failed' }, { status: 500 });
+  }
+
+  // Dispatch — return 5xx on error so SP-API retries.
   try {
     switch (env.NotificationType) {
       case 'ANY_OFFER_CHANGED':
@@ -88,7 +124,7 @@ export async function POST(req: Request) {
         console.warn('[sp-api-webhook] unrouted NotificationType:', env.NotificationType);
     }
   } catch (err) {
-    console.error('[sp-api-webhook] handler failed:', err);
+    captureRouteFatal(err, 'sp-api-webhook', { notification_id: notificationId });
     return NextResponse.json(
       {
         error: 'handler-failed',
@@ -98,8 +134,5 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json({
-    ok: true,
-    notification_id: env.NotificationMetadata?.NotificationId ?? null,
-  });
+  return NextResponse.json({ ok: true, notification_id: notificationId });
 }

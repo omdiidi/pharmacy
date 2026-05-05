@@ -133,6 +133,30 @@ services:
     envVars:
       - fromGroup: pharm1-shared
 
+  # --- Phase 3 hardening: hourly rate_limit_events purge (1h TTL) ----------
+  - type: cron
+    name: pharm1-rate-limit-purge
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm ci
+    schedule: "0 * * * *"  # hourly
+    startCommand: npm run cron:rate-limit-purge
+    envVars:
+      - fromGroup: pharm1-shared
+
+  # --- Phase 3 hardening: daily webhook_dedupe purge (24h TTL) -------------
+  - type: cron
+    name: pharm1-webhook-dedupe-purge
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm ci
+    schedule: "0 9 * * *"  # daily 09:00 UTC
+    startCommand: npm run cron:webhook-dedupe-purge
+    envVars:
+      - fromGroup: pharm1-shared
+
   # --- Weekly encrypted backup → Backblaze B2 --------------------------------
   - type: cron
     name: pharm1-backup-weekly

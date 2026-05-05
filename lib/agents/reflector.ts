@@ -10,6 +10,7 @@ import type { Database, Json } from '@/lib/supabase/types';
 import { openrouter } from '@/lib/llm';
 import { recordLLMUsage } from '@/lib/budget';
 import { writeMemory } from '@/lib/memory/write';
+import { Sentry } from '@/lib/logger';
 import {
   AGENT_MODEL,
   DEFAULT_PHARMACY_ID,
@@ -48,10 +49,14 @@ export async function runReflector(
 ): Promise<ReflectorResult> {
   const pharmacyId = opts.pharmacyId ?? DEFAULT_PHARMACY_ID;
   const now = opts.weekOf ?? new Date();
-  const weekEnd = new Date(now);
-  const weekStart = new Date(now);
+  // Phase 3 hardening: normalize weekEnd to UTC midnight so identical reads
+  // across consecutive cron invocations within the same UTC day yield the
+  // same audit/briefing window — avoids drift if the cron starts late.
+  const weekEnd = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0),
+  );
+  const weekStart = new Date(weekEnd);
   weekStart.setUTCDate(weekStart.getUTCDate() - 7);
-  weekStart.setUTCHours(0, 0, 0, 0);
 
   const gate = await dailyBudgetGate(supabase, 'reflector');
   if (gate.capped) return { briefing_id: null, capped: true };
@@ -143,7 +148,13 @@ export async function runReflector(
   await recordLLMUsage(supabase, null, completion);
 
   const raw = completion.choices[0]?.message?.content ?? '{}';
-  const parsed = OutputSchema.parse(JSON.parse(stripJsonFence(raw)));
+  let parsed: z.infer<typeof OutputSchema>;
+  try {
+    parsed = OutputSchema.parse(JSON.parse(stripJsonFence(raw)));
+  } catch (err) {
+    Sentry.captureException(err, { tags: { agent: 'reflector', stage: 'parse' } });
+    return { briefing_id: null, capped: false };
+  }
 
   const memoryIds: string[] = [];
   for (const pattern of parsed.patterns) {

@@ -23,6 +23,7 @@ import {
   TriageOutputSchema,
   type DraftOutput,
 } from './customer-success-output-schemas';
+import { Sentry } from '@/lib/logger';
 
 const HAIKU_MODEL = 'anthropic/claude-haiku-4.5';
 
@@ -78,9 +79,15 @@ export async function runCustomerSuccess(
     },
   });
   await recordLLMUsage(supabase, null, triageCompletion);
-  const triage = TriageOutputSchema.parse(
-    JSON.parse(stripJsonFence(triageCompletion.choices[0]?.message?.content ?? '{}')),
-  );
+  let triage: ReturnType<typeof TriageOutputSchema.parse>;
+  try {
+    triage = TriageOutputSchema.parse(
+      JSON.parse(stripJsonFence(triageCompletion.choices[0]?.message?.content ?? '{}')),
+    );
+  } catch (err) {
+    Sentry.captureException(err, { tags: { agent: 'customer-success', stage: 'triage-parse' } });
+    return { briefing_id: null, capped: false, error: 'triage_parse_error' };
+  }
 
   // Spam → audit only, no briefing.
   if (triage.classification === 'spam') {
@@ -141,9 +148,19 @@ export async function runCustomerSuccess(
       },
     });
     await recordLLMUsage(supabase, null, draftCompletion);
-    draft = DraftOutputSchema.parse(
-      JSON.parse(stripJsonFence(draftCompletion.choices[0]?.message?.content ?? '{}')),
-    );
+    try {
+      draft = DraftOutputSchema.parse(
+        JSON.parse(stripJsonFence(draftCompletion.choices[0]?.message?.content ?? '{}')),
+      );
+    } catch (err) {
+      Sentry.captureException(err, { tags: { agent: 'customer-success', stage: 'draft-parse' } });
+      return {
+        briefing_id: null,
+        capped: false,
+        classification: triage.classification,
+        error: 'draft_parse_error',
+      };
+    }
 
     proposed_actions = [
       {

@@ -4,16 +4,24 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { runResearchAnalyst } from '@/lib/agents/research-analyst';
+import { withSentry } from '@/lib/observability';
+import { withCronLock } from '@/lib/cron-lock';
+import { Sentry } from '@/lib/logger';
 
 async function main() {
   const supabase = createAdminClient();
-  const result = await runResearchAnalyst(supabase);
-  console.log(
-    `[research-analyst] done — proposed=${result.proposed} capped=${result.capped} briefings=${result.briefing_ids.length}`,
+  await withSentry('research-analyst', () =>
+    withCronLock(supabase, 'research-analyst', async () => {
+      const result = await runResearchAnalyst(supabase);
+      console.log(
+        `[research-analyst] done — proposed=${result.proposed} capped=${result.capped} briefings=${result.briefing_ids.length}`,
+      );
+    }),
   );
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
   console.error('[research-analyst] fatal:', err);
+  await Sentry.flush(2000);
   process.exit(1);
 });
