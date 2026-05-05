@@ -1,0 +1,62 @@
+{
+  "timestamp": 28891232,
+  "tokensLeft": 995,
+  "refillIn": 5421,
+  "refillRate": 20,
+  "tokensConsumed": 5,
+  "categoryIds": [3760931],
+  "categoryNames": ["Health & Household"],
+  "totalDealsFound": 5,
+  "dr": [
+    {
+      "asin": "B001GKPASE",
+      "title": "Nordic Naturals Omega-3 Fish Oil 1000mg, 120 softgels",
+      "current": [-1, 2599, -1, -1, -1, -1, -1, -1, 2799, -1, -1, -1, -1, -1, -1, -1, -1, -1, 2999],
+      "delta": [0, -800, 0, 0, 0, 0, 0, 0, -700, 0, 0, 0, 0, 0, 0, 0, 0, 0, -800],
+      "deltaPercent": [0, -23, 0, 0, 0, 0, 0, 0, -20, 0, 0, 0, 0, 0, 0, 0, 0, 0, -21],
+      "salesRanks": { "3760931": [12450] },
+      "isLowestOffer": true,
+      "categories": [3760931]
+    },
+    {
+      "asin": "B000BD0RT0",
+      "title": "Doctor's Best High Absorption Magnesium Glycinate 400mg, 240 tablets",
+      "current": [-1, 1899, -1, -1, -1, -1, -1, -1, 2099, -1, -1, -1, -1, -1, -1, -1, -1, -1, 2199],
+      "delta": [0, -300, 0, 0, 0, 0, 0, 0, -300, 0, 0, 0, 0, 0, 0, 0, 0, 0, -300],
+      "deltaPercent": [0, -14, 0, 0, 0, 0, 0, 0, -13, 0, 0, 0, 0, 0, 0, 0, 0, 0, -12],
+      "salesRanks": { "3760931": [3210] },
+      "isLowestOffer": false,
+      "categories": [3760931]
+    },
+    {
+      "asin": "B000GCL1KY",
+      "title": "Tinactin Antifungal Cream 1oz",
+      "current": [-1, 4799, -1, -1, -1, -1, -1, -1, 5199, -1, -1, -1, -1, -1, -1, -1, -1, -1, 5499],
+      "delta": [0, -1200, 0, 0, 0, 0, 0, 0, -800, 0, 0, 0, 0, 0, 0, 0, 0, 0, -700],
+      "deltaPercent": [0, -20, 0, 0, 0, 0, 0, 0, -13, 0, 0, 0, 0, 0, 0, 0, 0, 0, -11],
+      "salesRanks": { "3760931": [1842] },
+      "isLowestOffer": true,
+      "categories": [3760931]
+    },
+    {
+      "asin": "B0019LRY8A",
+      "title": "NOW Foods Melatonin 5mg, 180 tablets",
+      "current": [-1, 899, -1, -1, -1, -1, -1, -1, 999, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1099],
+      "delta": [0, -200, 0, 0, 0, 0, 0, 0, -200, 0, 0, 0, 0, 0, 0, 0, 0, 0, -200],
+      "deltaPercent": [0, -18, 0, 0, 0, 0, 0, 0, -17, 0, 0, 0, 0, 0, 0, 0, 0, 0, -15],
+      "salesRanks": { "3760931": [4521] },
+      "isLowestOffer": false,
+      "categories": [3760931]
+    },
+    {
+      "asin": "B004U3Y9FU",
+      "title": "Nature Made Vitamin D3 5000 IU, 90 softgels",
+      "current": [-1, 1099, -1, -1, -1, -1, -1, -1, 1199, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1299],
+      "delta": [0, -200, 0, 0, 0, 0, 0, 0, -150, 0, 0, 0, 0, 0, 0, 0, 0, 0, -100],
+      "deltaPercent": [0, -15, 0, 0, 0, 0, 0, 0, -11, 0, 0, 0, 0, 0, 0, 0, 0, 0, -7],
+      "salesRanks": { "3760931": [2103] },
+      "isLowestOffer": false,
+      "categories": [3760931]
+    }
+  ]
+}

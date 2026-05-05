@@ -10,6 +10,7 @@ import { repriceListing } from './reprice-listing';
 import { pauseListing } from './pause-listing';
 import { sendReply } from './send-reply';
 import { acknowledgeHealthAlert } from './acknowledge-health-alert';
+import { generatePurchaseOrder } from './generate-purchase-order';
 import { type Executor, UnknownExecutorError } from './types';
 
 const registry: Record<string, Executor> = {
@@ -22,6 +23,7 @@ const registry: Record<string, Executor> = {
   pause_listing: pauseListing,
   send_reply: sendReply,
   acknowledge_health_alert: acknowledgeHealthAlert,
+  generate_purchase_order: generatePurchaseOrder,
 };
 
 export function getExecutor(kind: string): Executor {

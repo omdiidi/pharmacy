@@ -12,6 +12,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { runRepricer } from '@/lib/agents/repricer';
 import { runAccountHealth } from '@/lib/agents/account-health';
 import { runCustomerSuccess } from '@/lib/agents/customer-success';
+import { runFulfillmentOps } from '@/lib/agents/fulfillment-ops';
 import type { NotificationEnvelope } from '@/lib/sp-api';
 
 export const runtime = 'nodejs';
@@ -59,6 +60,10 @@ export async function POST(req: Request) {
       case 'LISTINGS_ITEM_ISSUES_CHANGE':
       case 'LISTINGS_ITEM_STATUS_CHANGE':
         await runAccountHealth(supabase, { trigger: 'event', event: env });
+        break;
+      case 'ORDER_CHANGE':
+      case 'ORDER_STATUS_CHANGE':
+        await runFulfillmentOps(supabase, { trigger: 'webhook', event: env });
         break;
       case 'CUSTOMER_MESSAGE_RECEIVED': {
         // Our own convention; not a canonical SP-API NotificationType. Wave 3

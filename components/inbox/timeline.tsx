@@ -68,6 +68,8 @@ function agentLabel(source: string | null | undefined): string {
       return 'Fulfillment Ops';
     case 'customer_success':
       return 'Customer Success';
+    case 'chief_of_staff_digest':
+      return 'Daily Digest';
     default:
       return source ?? 'Unknown agent';
   }

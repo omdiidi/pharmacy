@@ -60,6 +60,10 @@ backups/
 # Only the *extracted fixtures* under vendor/sp-api-fixtures/ are committed.
 vendor/sp-api-models/
 
+# Wave 3: raw Keepa API responses for fixture re-derivation (only parsed
+# fixtures under vendor/keepa-fixtures/ are committed).
+vendor/keepa-fixtures/raw/
+
 # Claude Code / agent scratch — keep planning artifacts, ignore everything else
 tmp/*
 !tmp/briefs/

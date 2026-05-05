@@ -4,8 +4,23 @@ import { query_orders, query_orders_def } from '@/lib/tools/query_orders';
 import { search_memory, search_memory_def } from '@/lib/tools/search_memory';
 import { get_recent_briefings, get_recent_briefings_def } from '@/lib/tools/get_recent_briefings';
 import { enqueue_job, enqueue_job_def } from '@/lib/tools/enqueue_job';
+import {
+  batch_approve_briefings,
+  batch_approve_briefings_def,
+} from '@/lib/tools/batch_approve_briefings';
+import {
+  dismiss_all_briefings,
+  dismiss_all_briefings_def,
+} from '@/lib/tools/dismiss_all_briefings';
+import { summarize_inbox, summarize_inbox_def } from '@/lib/tools/summarize_inbox';
 
-export type ToolHandler = (input: unknown, ctx: { pharmacyId: string }) => Promise<string>;
+export type ToolContext = {
+  pharmacyId: string;
+  userId: string;
+  email: string;
+};
+
+export type ToolHandler = (input: unknown, ctx: ToolContext) => Promise<string>;
 
 const registry: Record<string, ToolHandler> = {
   query_products,
@@ -13,6 +28,9 @@ const registry: Record<string, ToolHandler> = {
   search_memory,
   get_recent_briefings,
   enqueue_job,
+  batch_approve_briefings,
+  dismiss_all_briefings,
+  summarize_inbox,
 };
 
 export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
@@ -21,12 +39,15 @@ export const toolDefinitions: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   search_memory_def,
   get_recent_briefings_def,
   enqueue_job_def,
+  batch_approve_briefings_def,
+  dismiss_all_briefings_def,
+  summarize_inbox_def,
 ];
 
 export async function executeTool(
   name: string,
   input: unknown,
-  ctx: { pharmacyId: string },
+  ctx: ToolContext,
 ): Promise<string> {
   try {
     const handler = registry[name];

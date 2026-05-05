@@ -1,0 +1,9 @@
+{
+  "meta": {
+    "disclaimer": "Fixture: empty results envelope used when openFDA returns 5xx.",
+    "terms": "https://open.fda.gov/terms/",
+    "license": "https://open.fda.gov/license/",
+    "last_updated": "2026-05-04"
+  },
+  "results": []
+}

@@ -1,0 +1,52 @@
+[
+  {
+    "wholesaler": "abc",
+    "ndc": "04110080864",
+    "product_name": "Tinactin Antifungal Cream 1oz",
+    "unit_price": 4.85,
+    "pack_size": "1OZ",
+    "stock_qty": 100,
+    "eta_days": 1,
+    "captured_at": "2026-05-04T00:00:00.000Z"
+  },
+  {
+    "wholesaler": "mckesson",
+    "ndc": "04110080864",
+    "product_name": "Tinactin Antifungal Cream 1oz",
+    "unit_price": 5.09,
+    "pack_size": "1OZ",
+    "stock_qty": 100,
+    "eta_days": 1,
+    "captured_at": "2026-05-04T00:00:00.000Z"
+  },
+  {
+    "wholesaler": "cardinal",
+    "ndc": "04110080864",
+    "product_name": "Tinactin Antifungal Cream 1oz",
+    "unit_price": 5.0,
+    "pack_size": "1OZ",
+    "stock_qty": 100,
+    "eta_days": 2,
+    "captured_at": "2026-05-04T00:00:00.000Z"
+  },
+  {
+    "wholesaler": "parmed",
+    "ndc": "04110080864",
+    "product_name": "Tinactin Antifungal Cream 1oz",
+    "unit_price": 5.19,
+    "pack_size": "1OZ",
+    "stock_qty": 100,
+    "eta_days": 2,
+    "captured_at": "2026-05-04T00:00:00.000Z"
+  },
+  {
+    "wholesaler": "ezrirx",
+    "ndc": "04110080864",
+    "product_name": "Tinactin Antifungal Cream 1oz",
+    "unit_price": 4.9,
+    "pack_size": "1OZ",
+    "stock_qty": 100,
+    "eta_days": 1,
+    "captured_at": "2026-05-04T00:00:00.000Z"
+  }
+]

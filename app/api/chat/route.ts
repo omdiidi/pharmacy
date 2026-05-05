@@ -162,6 +162,8 @@ export async function POST(req: Request) {
             }
             const result = await executeTool(tc.name, parsedInput, {
               pharmacyId: session.pharmacyId,
+              userId: session.userId,
+              email: session.email,
             });
             conversation.push({
               role: 'tool',

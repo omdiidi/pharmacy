@@ -6,6 +6,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@/lib/supabase/types';
+import { embed, VOYAGE_EMBEDDING_MODEL } from '@/lib/voyage/embed';
 
 export type MemoryKind = 'episodic' | 'procedural' | 'semantic' | 'preferences';
 
@@ -51,5 +52,38 @@ export async function writeMemory(
   if (error || !data) {
     throw new Error(`writeMemory failed: ${error?.message ?? 'no row returned'}`);
   }
+
+  // Best-effort: write Voyage embedding after the row is in place. If creds
+  // are missing or the call fails, the row stays without an embedding and the
+  // pg_trgm fallback covers retrieval. Backfill script can re-fill later.
+  try {
+    const vectors = await embed(args.content);
+    if (vectors && vectors[0]) {
+      // pgvector over PostgREST accepts the bracketed-string form
+      // '[0.1,0.2,...]'. The generated types treat the column as
+      // `string | null`, so we serialize the number[] explicitly. Direct
+      // array assignment fails type-checking AND occasionally serializes
+      // wrong on the wire (Postgres rejects with "malformed array literal").
+      const vectorLiteral = '[' + vectors[0].join(',') + ']';
+      const { error: embedErr } = await supabase
+        .from('memory')
+        .update({
+          embedding: vectorLiteral as unknown as string,
+          embedding_model: VOYAGE_EMBEDDING_MODEL,
+        })
+        .eq('id', data.id);
+      if (embedErr) {
+        console.warn(
+          `[memory.write] embed update failed for ${data.id}: ${embedErr.message}`,
+        );
+      }
+    }
+  } catch (err) {
+    console.warn(
+      '[memory.write] embed step exception:',
+      err instanceof Error ? err.message : err,
+    );
+  }
+
   return { id: data.id, inserted: true };
 }

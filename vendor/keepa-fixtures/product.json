@@ -1,0 +1,26 @@
+{
+  "timestamp": 28891232,
+  "tokensLeft": 994,
+  "refillIn": 5421,
+  "refillRate": 20,
+  "tokensConsumed": 1,
+  "products": [
+    {
+      "asin": "B001GKPASE",
+      "title": "Nordic Naturals Omega-3 Fish Oil 1000mg, 120 softgels",
+      "domainId": 1,
+      "csv": [null, [28891200, 2599], null, null, null, null, null, null, [28891200, 2799], null, null, null, null, null, null, null, null, null, [28891200, 2999]],
+      "stats": {
+        "current": [-1, 2599, -1, -1, -1, -1, -1, -1, 2799, -1, -1, -1, -1, -1, -1, -1, -1, -1, 2999],
+        "avg30": [-1, 3199, -1, -1, -1, -1, -1, -1, 3299, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3499],
+        "avg90": [-1, 3299, -1, -1, -1, -1, -1, -1, 3399, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3599],
+        "avg180": [-1, 3399, -1, -1, -1, -1, -1, -1, 3499, -1, -1, -1, -1, -1, -1, -1, -1, -1, 3699],
+        "salesRankDrops30": 142,
+        "salesRankDrops90": 487,
+        "salesRankDrops180": 1024,
+        "outOfStockPercentage30": [0, 0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "outOfStockPercentage90": [0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      }
+    }
+  ]
+}

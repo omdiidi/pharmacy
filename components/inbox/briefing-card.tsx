@@ -205,6 +205,7 @@ export function BriefingCard({ item }: { item: BriefingItem }) {
                 const isReportOnly =
                   item.source_agent === 'bookkeeper' ||
                   item.source_agent === 'reflector' ||
+                  item.source_agent === 'chief_of_staff_digest' ||
                   (item.source_agent === 'portfolio_manager' &&
                     (!item.proposed_actions || item.proposed_actions.length === 0)) ||
                   (item.source_agent === 'account_health' &&

@@ -107,6 +107,32 @@ services:
     envVars:
       - fromGroup: pharm1-shared
 
+  # --- Research Analyst (Phase 2 Wave 3 — daily 06:15 UTC) ------------------
+  # Staggered 15 min after Account Health so log streams don't interleave.
+  - type: cron
+    name: pharm1-research-analyst
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm ci
+    schedule: "15 6 * * *"
+    startCommand: npm run agent:research-analyst
+    envVars:
+      - fromGroup: pharm1-shared
+
+  # --- Chief of Staff Daily Digest (Phase 2 Wave 3 — daily 07:00 UTC) -------
+  # 45 min after Research Analyst so the digest captures the morning briefings.
+  - type: cron
+    name: pharm1-chief-of-staff-digest
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm ci
+    schedule: "0 7 * * *"
+    startCommand: npm run agent:chief-of-staff-digest
+    envVars:
+      - fromGroup: pharm1-shared
+
   # --- Weekly encrypted backup → Backblaze B2 --------------------------------
   - type: cron
     name: pharm1-backup-weekly
@@ -204,4 +230,20 @@ envVarGroups:
       - key: TWILIO_FROM_NUMBER
         sync: false
       - key: KALEEM_SMS_NUMBER
+        sync: false
+      # --- Wave 3: Voyage AI embeddings (Phase 1.5 fold-in; cred-gated) ---
+      - key: VOYAGE_API_KEY
+        sync: false
+      # --- Wave 3: openFDA (free; key optional, raises rate limit) ---
+      - key: FDA_API_KEY
+        sync: false
+      # --- Wave 3: Keepa (cred-gated; falls back to fixture client) ---
+      - key: KEEPA_API_KEY
+        sync: false
+      # --- Wave 3: EzriRx EDI (cred-gated; falls back to vendor/edi-fixtures) ---
+      - key: EZRIRX_SFTP_HOST
+        sync: false
+      - key: EZRIRX_SFTP_USER
+        sync: false
+      - key: EZRIRX_SFTP_KEY
         sync: false

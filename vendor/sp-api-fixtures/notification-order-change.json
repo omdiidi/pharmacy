@@ -1,0 +1,37 @@
+{
+  "NotificationVersion": "1.0",
+  "NotificationType": "ORDER_CHANGE",
+  "PayloadVersion": "1.0",
+  "EventTime": "2026-05-04T13:00:00.000Z",
+  "Payload": {
+    "OrderChangeNotification": {
+      "SellerId": "A1B2C3D4E5F6G7",
+      "AmazonOrderId": "111-2222222-3333333",
+      "OrderChangeType": "NewOrder",
+      "OrderChangeTrigger": {
+        "TimeOfOrderChange": "2026-05-04T12:59:50.000Z"
+      },
+      "Summary": {
+        "MarketplaceId": "ATVPDKIKX0DER",
+        "OrderStatus": "Unshipped",
+        "DestinationPostalCode": "84101",
+        "OrderItems": [
+          {
+            "ASIN": "B001GKPASE",
+            "SellerSKU": "SKU-OMEGA3-120",
+            "Quantity": 1
+          }
+        ],
+        "OrderType": "StandardOrder",
+        "LevelOfFulfillment": "SellerFulfilled",
+        "Programs": []
+      }
+    }
+  },
+  "NotificationMetadata": {
+    "ApplicationId": "amzn1.sp.solution.fixture",
+    "SubscriptionId": "fixture-subscription-id",
+    "PublishTime": "2026-05-04T13:00:00.000Z",
+    "NotificationId": "fixture-notif-orderchange-001"
+  }
+}
