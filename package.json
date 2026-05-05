@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:kernel-race": "tsx scripts/test-kernel-race.ts",
     "verify-models": "tsx scripts/verify-models.ts",
     "seed:dev": "tsx scripts/seed-dev-data.ts",
     "agent:listing": "tsx scripts/listing-agent.ts",

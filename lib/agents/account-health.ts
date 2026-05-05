@@ -22,12 +22,91 @@ import {
 } from './_shared';
 import { getReportsClient } from '@/lib/sp-api';
 import { sendSms } from '@/lib/sms/twilio';
-import { pauseListing } from '@/lib/executors/pause-listing';
+import { approveOne, type ApproveContext } from '@/lib/kernel/approve';
+import { Sentry } from '@/lib/logger';
 import {
   classifyStatus,
   type HealthMetricsSnapshot,
   type HealthStatus,
 } from './account-health-status-classifier';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const SYSTEM_CTX: Pick<ApproveContext, 'userId' | 'email' | 'actorKind' | 'actorLabel'> = {
+  // Sentinel UUID — actor_kind='system' marks this row as non-human; actor_user_id is not enforced.
+  userId: '00000000-0000-0000-0000-000000000000',
+  email: 'system+account-health@pharm1.local',
+  actorKind: 'system',
+  actorLabel: 'account_health',
+};
+
+/**
+ * Create a briefing+inbox_item pair for an auto-pause action and return
+ * the inbox_item.id so the caller can immediately route it through
+ * approveOne with actor_kind='system'. Sets briefings.auto_executed = true
+ * so the Daily Digest can filter system-actioned items out of the human
+ * review feed.
+ */
+async function emitAutoPauseBriefing(
+  supabase: SupabaseClient<Database>,
+  args: {
+    pharmacyId: string;
+    listingId: string;
+    autoExecuted: boolean;
+    reasoning: string;
+    triggeredBy: string;
+  },
+): Promise<string> {
+  const { data: briefing, error: briefErr } = await supabase
+    .from('briefings')
+    .insert({
+      pharmacy_id: args.pharmacyId,
+      source_agent: 'account_health',
+      briefing_type: 'account_health',
+      title: `Auto-pause listing ${args.listingId}`,
+      summary: `Account health red — auto-pausing listing ${args.listingId}.`,
+      rationale: args.reasoning,
+      confidence: 0.9,
+      urgency: 5,
+      auto_executed: args.autoExecuted,
+      proposed_actions: [
+        {
+          kind: 'pause_listing',
+          label: 'Pause listing',
+          variant: 'primary',
+          params: {
+            listing_id: args.listingId,
+            triggered_by: args.triggeredBy,
+            reasoning: args.reasoning,
+          },
+        },
+      ] as Json,
+      data_snapshot: {
+        kind: 'auto_pause_briefing',
+        listing_id: args.listingId,
+        triggered_by: args.triggeredBy,
+      } as Json,
+    })
+    .select('id')
+    .single();
+  if (briefErr || !briefing) {
+    throw new Error(`emitAutoPauseBriefing: briefing insert failed: ${briefErr?.message}`);
+  }
+
+  const { data: item, error: itemErr } = await supabase
+    .from('inbox_items')
+    .insert({
+      pharmacy_id: args.pharmacyId,
+      briefing_id: briefing.id,
+      state: 'pending',
+    })
+    .select('id')
+    .single();
+  if (itemErr || !item) {
+    throw new Error(`emitAutoPauseBriefing: inbox_item insert failed: ${itemErr?.message}`);
+  }
+  return item.id;
+}
 
 const OutputSchema = z.object({
   status: z.enum(['green', 'yellow', 'red']),
@@ -187,37 +266,53 @@ export async function runAccountHealth(
     ] as Json;
   } else if (status === 'red') {
     urgency = 5;
-    for (const lid of contributingIds) {
+    const validIds = contributingIds.filter((id) => UUID_RE.test(id));
+    if (validIds.length < contributingIds.length) {
+      Sentry.captureMessage('[account-health] non-UUID listing ids filtered', {
+        level: 'warning',
+      });
+    }
+
+    for (const lid of validIds) {
+      let inboxItemId: string | null = null;
       try {
-        const result = await pauseListing.forward(
-          {
-            listing_id: lid,
-            triggered_by: 'account_health_red_auto',
-            reasoning: parsed.reasoning,
-          },
-          { pharmacyId, userId: 'system:account_health' },
-        );
-        const undoExpiry = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-        await supabase.from('audit_log').insert({
-          pharmacy_id: pharmacyId,
-          actor: 'system:account_health',
-          action: 'pause_listing',
-          target_entity_type: 'listings',
-          target_entity_id: lid,
-          params: {
-            listing_id: lid,
-            triggered_by: 'account_health_red_auto',
-            reasoning: parsed.reasoning,
-          } as Json,
-          result: result as Json,
-          undo_window_expires_at: undoExpiry,
+        inboxItemId = await emitAutoPauseBriefing(supabase, {
+          pharmacyId,
+          listingId: lid,
+          autoExecuted: true,
+          reasoning: parsed.reasoning ?? 'account_health red',
+          triggeredBy: 'account_health_red_auto',
         });
+
+        const r = await approveOne(supabase, inboxItemId, 0, {
+          pharmacyId,
+          ...SYSTEM_CTX,
+        });
+        if (!r.ok) {
+          // Compensate: mark the briefing's inbox row dismissed so it surfaces
+          // in digests as a system-failure (Kaleem reviews manually).
+          await supabase
+            .from('inbox_items')
+            .update({ state: 'dismissed', dismissed_reason: 'system_executor_failed' })
+            .eq('id', inboxItemId);
+          Sentry.captureMessage(`auto-pause approveOne failed: ${r.error}`, {
+            level: 'error',
+            tags: { listing_id: lid, briefing_id: inboxItemId },
+          });
+          continue;
+        }
         autoPaused.push(lid);
       } catch (err) {
-        console.warn(
-          `[account-health] auto-pause failed for ${lid}:`,
-          err instanceof Error ? err.message : err,
-        );
+        Sentry.captureException(err, {
+          tags: { agent: 'account-health', stage: 'auto-pause', listing_id: lid },
+        });
+        // If briefing was created but approveOne threw, dismiss it.
+        if (inboxItemId) {
+          await supabase
+            .from('inbox_items')
+            .update({ state: 'dismissed', dismissed_reason: 'system_executor_failed' })
+            .eq('id', inboxItemId);
+        }
       }
     }
     proposed_actions = [

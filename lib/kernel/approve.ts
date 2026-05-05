@@ -4,10 +4,10 @@
 //
 //   1. Read briefing + proposed_actions, gated by pharmacy.
 //   2. Atomic state flip — succeeds only when row is still 'pending'
-//      (409-equivalent if stale).
+//      (409-equivalent if stale). This is the executor lock.
 //   3. Executor.forward FIRST. On failure, revert state so user can retry.
-//   4. INSERT audit_log with result populated up-front.
-//   5. If executor created a pending_listings row, link audit_log_id back.
+//   4. Atomic audit_log INSERT + pending_*.audit_log_id back-link via
+//      approve_audit_atomic RPC (Phase 2 hardening).
 //
 // Returns a discriminated-union result so callers can map back to HTTP
 // status codes or aggregate batch outcomes.
@@ -15,6 +15,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@/lib/supabase/types';
 import { getExecutor } from '@/lib/executors';
+import { Sentry } from '@/lib/logger';
 
 export const UNDO_WINDOW_MIN = 30;
 
@@ -29,6 +30,8 @@ export type ApproveContext = {
   pharmacyId: string;
   userId: string;
   email: string;
+  actorKind?: 'human' | 'system';   // defaults to 'human'
+  actorLabel?: string;              // e.g. 'account_health' when actorKind='system'
 };
 
 export type ApproveSuccess = {
@@ -45,6 +48,40 @@ export type ApproveFailure = {
 };
 
 export type ApproveResult = ApproveSuccess | ApproveFailure;
+
+// Map executor result keys → pending_* table names. Must match the SQL
+// allowlist in approve_audit_atomic exactly.
+const PENDING_RESULT_KEY: Record<string, string> = {
+  'pending_listings': 'pending_listing_id',
+  'pending_pricing_changes': 'pending_pricing_change_id',
+  'pending_customer_messages': 'pending_customer_message_id',
+  'pending_health_actions': 'pending_health_action_id',
+  'pending_purchase_orders': 'pending_purchase_order_id',
+};
+
+function pickPendingTable(result: Record<string, unknown>): string | null {
+  for (const [table, key] of Object.entries(PENDING_RESULT_KEY)) {
+    if (typeof result[key] === 'string') return table;
+  }
+  return null;
+}
+
+function pendingIdKey(table: string): string {
+  return PENDING_RESULT_KEY[table];
+}
+
+async function tryReverseExecutor(
+  kind: string,
+  params: Record<string, unknown>,
+  forwardResult: Record<string, unknown>,
+  ctx: ApproveContext,
+): Promise<void> {
+  const executor = getExecutor(kind);
+  await executor.reverse(params, forwardResult, {
+    pharmacyId: ctx.pharmacyId,
+    userId: ctx.userId,
+  });
+}
 
 export async function approveOne(
   supabase: SupabaseClient<Database>,
@@ -75,7 +112,8 @@ export async function approveOne(
   const kind = action.kind;
   const params = (action.params ?? {}) as Record<string, unknown>;
 
-  // 2. Atomic state flip — only succeeds if still pending.
+  // 2. Atomic state flip — only succeeds if still pending. This is the
+  // executor lock: only one caller wins; concurrent callers get 409.
   const { data: flipped } = await supabase
     .from('inbox_items')
     .update({
@@ -92,7 +130,7 @@ export async function approveOne(
     return { ok: false, status: 409, error: 'stale — already acted' };
   }
 
-  // 3. Executor FIRST. On failure, revert state so user can retry.
+  // 3. Executor runs after the atomic claim. On failure, revert state.
   let result: Record<string, unknown> = {};
   try {
     const executor = getExecutor(kind);
@@ -112,42 +150,43 @@ export async function approveOne(
     };
   }
 
-  // 4. INSERT audit_log with result populated up-front.
-  const undoExpiry = new Date(Date.now() + UNDO_WINDOW_MIN * 60 * 1000).toISOString();
-  const { data: audit, error: auditErr } = await supabase
-    .from('audit_log')
-    .insert({
-      pharmacy_id: ctx.pharmacyId,
-      actor: ctx.email,
-      action: kind,
-      target_entity_type: 'inbox_items',
-      target_entity_id: inboxItemId,
-      params: params as Json,
-      result: result as Json,
-      undo_window_expires_at: undoExpiry,
-    })
-    .select('id')
-    .single();
-  if (auditErr || !audit) {
+  // 4. Audit insert + back-link in one transaction via RPC.
+  const pendingTable = pickPendingTable(result);
+  const pendingId = pendingTable
+    ? ((result as Record<string, unknown>)[pendingIdKey(pendingTable)] as string)
+    : null;
+
+  const { data: rpcResult, error: rpcErr } = await supabase.rpc('approve_audit_atomic', {
+    p_inbox_item_id: inboxItemId,
+    p_pharmacy_id: ctx.pharmacyId,
+    p_actor: ctx.email,
+    p_actor_kind: ctx.actorKind ?? 'human',
+    p_actor_label: ctx.actorLabel ?? null,
+    p_action: kind,
+    p_params: params as unknown as Json,
+    p_result: result as unknown as Json,
+    p_undo_window_min: UNDO_WINDOW_MIN,
+    p_pending_table: pendingTable,
+    p_pending_id: pendingId,
+  });
+
+  if (rpcErr || !rpcResult || rpcResult.length === 0) {
+    // RPC failed AFTER executor side-effect ran. Compensate best-effort.
+    Sentry.captureException(rpcErr ?? new Error('audit RPC empty'), {
+      tags: { kernel: 'approve', stage: 'audit-insert' },
+    });
+    await tryReverseExecutor(kind, params, result, ctx).catch(() => {});
     return {
       ok: false,
       status: 500,
-      error: `audit_log insert failed: ${auditErr?.message ?? 'unknown'}`,
+      error: `kernel audit-insert failed: ${rpcErr?.message ?? 'EMPTY'}`,
     };
-  }
-
-  // 5. If executor created a pending_listings row, link it back.
-  if (typeof result.pending_listing_id === 'string') {
-    await supabase
-      .from('pending_listings')
-      .update({ audit_log_id: audit.id })
-      .eq('id', result.pending_listing_id);
   }
 
   return {
     ok: true,
-    audit_log_id: audit.id,
-    undo_window_expires_at: undoExpiry,
+    audit_log_id: rpcResult[0].audit_log_id,
+    undo_window_expires_at: rpcResult[0].undo_window_expires_at,
     result,
   };
 }

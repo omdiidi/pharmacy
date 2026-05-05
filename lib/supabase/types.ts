@@ -18,6 +18,8 @@ export type Database = {
         Row: {
           action: string
           actor: string
+          actor_kind: string
+          actor_label: string | null
           created_at: string | null
           id: string
           params: Json | null
@@ -31,6 +33,8 @@ export type Database = {
         Insert: {
           action: string
           actor: string
+          actor_kind?: string
+          actor_label?: string | null
           created_at?: string | null
           id?: string
           params?: Json | null
@@ -44,6 +48,8 @@ export type Database = {
         Update: {
           action?: string
           actor?: string
+          actor_kind?: string
+          actor_label?: string | null
           created_at?: string | null
           id?: string
           params?: Json | null
@@ -143,6 +149,7 @@ export type Database = {
       }
       briefings: {
         Row: {
+          auto_executed: boolean
           briefing_type: Database["public"]["Enums"]["briefing_type"]
           confidence: number | null
           created_at: string | null
@@ -161,6 +168,7 @@ export type Database = {
           urgency: number | null
         }
         Insert: {
+          auto_executed?: boolean
           briefing_type: Database["public"]["Enums"]["briefing_type"]
           confidence?: number | null
           created_at?: string | null
@@ -179,6 +187,7 @@ export type Database = {
           urgency?: number | null
         }
         Update: {
+          auto_executed?: boolean
           briefing_type?: Database["public"]["Enums"]["briefing_type"]
           confidence?: number | null
           created_at?: string | null
@@ -1367,6 +1376,38 @@ export type Database = {
       }
     }
     Functions: {
+      approve_audit_atomic: {
+        Args: {
+          p_inbox_item_id: string
+          p_pharmacy_id: string
+          p_actor: string
+          p_actor_kind: string
+          p_actor_label: string | null
+          p_action: string
+          p_params: Json
+          p_result: Json
+          p_undo_window_min?: number
+          p_pending_table?: string | null
+          p_pending_id?: string | null
+        }
+        Returns: {
+          audit_log_id: string
+          undo_window_expires_at: string
+        }[]
+      }
+      reject_action_atomic: {
+        Args: {
+          p_inbox_item_id: string
+          p_pharmacy_id: string
+          p_actor: string
+          p_actor_kind: string
+          p_actor_label: string | null
+          p_dismissed_reason: string
+        }
+        Returns: {
+          audit_log_id: string
+        }[]
+      }
       claim_next_job_with_cap: {
         Args: { p_cap?: number; p_version: string; p_worker_id: string }
         Returns: {
