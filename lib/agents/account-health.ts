@@ -142,11 +142,40 @@ export async function runAccountHealth(
 
   const contributingIds = parsed.contributing_listing_ids ?? [];
 
-  if (status === 'red' && contributingIds.length > MAX_AUTO_PAUSE) {
-    urgency = 5;
-    smsSent = await sendSms(
-      `PHARMADASH ALERT: Red status, ${contributingIds.length} listings affected — too many for auto-pause. Open inbox.`,
+  // SMS-must-prove gate: before entering any red-status auto-pause path, probe
+  // the SMS alert channel. If the alert path is unproven (creds missing), refuse
+  // to auto-pause — silently flipping listings without a working alert is the
+  // worst failure mode. Emit acknowledge-only briefing instead.
+  let smsPathUnproven = false;
+  if (status === 'red') {
+    const probe = await sendSms(
+      `PHARMADASH ALERT: Account health RED for pharmacy ${pharmacyId}. Manual review required.`,
     );
+    smsSent = probe;
+    if (
+      probe.sent === false &&
+      (probe.reason === 'twilio-creds-missing' || probe.reason === 'phone-numbers-missing')
+    ) {
+      smsPathUnproven = true;
+    }
+  }
+
+  if (status === 'red' && smsPathUnproven) {
+    urgency = 5;
+    proposed_actions = [
+      {
+        kind: 'acknowledge_health_alert',
+        label: 'Acknowledge alert',
+        variant: 'primary',
+        params: {
+          sms_path_unproven: true,
+          would_have_paused: contributingIds.slice(0, MAX_AUTO_PAUSE),
+        },
+      },
+      { kind: 'dismiss_briefing', label: 'Dismiss', variant: 'secondary', params: {} },
+    ] as Json;
+  } else if (status === 'red' && contributingIds.length > MAX_AUTO_PAUSE) {
+    urgency = 5;
     proposed_actions = [
       {
         kind: 'acknowledge_health_alert',
@@ -191,9 +220,6 @@ export async function runAccountHealth(
         );
       }
     }
-    smsSent = await sendSms(
-      `PHARMADASH ALERT: Account health RED. ${autoPaused.length} listings auto-paused. Open inbox to acknowledge.`,
-    );
     proposed_actions = [
       {
         kind: 'acknowledge_health_alert',
@@ -251,6 +277,7 @@ export async function runAccountHealth(
         trigger,
         auto_paused_listings: autoPaused,
         sms: smsSent,
+        sms_path_unproven: smsPathUnproven,
         unmapped_corrective_actions: (parsed.proposed_corrective_actions ?? []).filter(
           (a) => a.kind !== 'pause_listing',
         ),

@@ -205,6 +205,8 @@ envVarGroups:
       # DEV_PASSWORD. Set to "false" or remove for a real launch.
       - key: DEV_LOGIN_ENABLED
         value: "true"
+      - key: DEV_PASSWORD
+        sync: false
       - key: NEXT_PUBLIC_DEV_LOGIN_ENABLED
         value: "true"
       # --- Wave 2: Amazon SP-API (cred-gated; agents fall back to fixtures when unset) ---
