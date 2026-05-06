@@ -6,6 +6,7 @@ const KEEPA_BASE = 'https://api.keepa.com';
 const MIN_TOKENS = 5;
 
 let lastTokensLeft: number | null = null;
+let lastRefillIn: number | null = null;
 
 export function getLastTokensLeft(): number | null {
   return lastTokensLeft;
@@ -26,7 +27,11 @@ export async function keepaFetch<T extends { tokensLeft?: number; refillIn?: num
     throw new Error('keepaFetch called without KEEPA_API_KEY');
   }
 
-  if (lastTokensLeft !== null && lastTokensLeft < MIN_TOKENS) {
+  // P4.6 fix — exempt /token status probe from MIN_TOKENS gate; that endpoint
+  // is the one that REFRESHES our knowledge of the balance, so blocking it
+  // when balance is low creates a self-deadlock.
+  const isTokenProbe = path === '/token' || path.startsWith('/token?');
+  if (!isTokenProbe && lastTokensLeft !== null && lastTokensLeft < MIN_TOKENS) {
     throw new Error(
       `Keepa token balance too low (${lastTokensLeft}); refusing to call ${path}`,
     );
@@ -55,11 +60,16 @@ export async function keepaFetch<T extends { tokensLeft?: number; refillIn?: num
           console.warn(`[keepa] tokens low: ${json.tokensLeft}`);
         }
       }
+      // P4.6 — capture server-provided refillIn so 429 retries use real value.
+      if (typeof json.refillIn === 'number' && json.refillIn >= 0) {
+        lastRefillIn = json.refillIn;
+      }
       return json;
     }
     if (res.status === 429 && attempt < 1) {
-      // Retry once after refillIn, falling back to 5s.
-      const refillIn = lastTokensLeft && lastTokensLeft >= 0 ? 5000 : 5000;
+      // Retry once using server-provided refillIn (captured from prior response),
+      // falling back to 5s if we don't have one yet.
+      const refillIn = lastRefillIn ?? 5000;
       await new Promise((r) => setTimeout(r, refillIn));
       attempt++;
       continue;

@@ -22,6 +22,7 @@ import {
 } from './_shared';
 import { getReportsClient } from '@/lib/sp-api';
 import { sendSms } from '@/lib/sms/twilio';
+import { envIsRealValue } from '@/lib/env-gate';
 import { approveOne, type ApproveContext } from '@/lib/kernel/approve';
 import { Sentry } from '@/lib/logger';
 import {
@@ -221,21 +222,22 @@ export async function runAccountHealth(
 
   const contributingIds = parsed.contributing_listing_ids ?? [];
 
-  // SMS-must-prove gate: before entering any red-status auto-pause path, probe
-  // the SMS alert channel. If the alert path is unproven (creds missing), refuse
-  // to auto-pause — silently flipping listings without a working alert is the
-  // worst failure mode. Emit acknowledge-only briefing instead.
+  // SMS-must-prove gate: before entering any red-status auto-pause path, check
+  // whether the SMS alert channel is configured. If the alert path is unproven
+  // (creds or numbers missing), refuse to auto-pause — silently flipping
+  // listings without a working alert is the worst failure mode. The actual
+  // Twilio send happens AFTER the briefing is inserted (so we can use
+  // briefing.id as the sms_sends dedupe key — see P4.7).
   let smsPathUnproven = false;
   if (status === 'red') {
-    const probe = await sendSms(
-      `PHARMADASH ALERT: Account health RED for pharmacy ${pharmacyId}. Manual review required.`,
-    );
-    smsSent = probe;
-    if (
-      probe.sent === false &&
-      (probe.reason === 'twilio-creds-missing' || probe.reason === 'phone-numbers-missing')
-    ) {
+    const credsOk =
+      envIsRealValue('TWILIO_ACCOUNT_SID') &&
+      envIsRealValue('TWILIO_AUTH_TOKEN') &&
+      envIsRealValue('KALEEM_SMS_NUMBER') &&
+      envIsRealValue('TWILIO_FROM_NUMBER');
+    if (!credsOk) {
       smsPathUnproven = true;
+      smsSent = { sent: false, reason: 'twilio-creds-missing' };
     }
   }
 
@@ -389,6 +391,34 @@ export async function runAccountHealth(
     briefing_id: briefing.id,
     state: 'pending',
   });
+
+  // Now that we have briefing.id, send the SMS alert (deduped by briefing_id).
+  // Skip when status is not red OR creds are unproven (already short-circuited).
+  if (status === 'red' && !smsPathUnproven) {
+    smsSent = await sendSms(
+      `PHARMADASH ALERT: Account health RED for pharmacy ${pharmacyId}. Manual review required.`,
+      briefing.id,
+      supabase,
+    );
+    // Update data_snapshot.sms post-hoc so the briefing reflects the actual outcome.
+    await supabase
+      .from('briefings')
+      .update({
+        data_snapshot: {
+          kind: 'account_health_snapshot',
+          status,
+          metrics: snap,
+          trigger,
+          auto_paused_listings: autoPaused,
+          sms: smsSent,
+          sms_path_unproven: smsPathUnproven,
+          unmapped_corrective_actions: (parsed.proposed_corrective_actions ?? []).filter(
+            (a) => a.kind !== 'pause_listing',
+          ),
+        } as Json,
+      })
+      .eq('id', briefing.id);
+  }
 
   return {
     briefing_id: briefing.id,

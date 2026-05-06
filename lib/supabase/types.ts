@@ -317,6 +317,74 @@ export type Database = {
         }
         Relationships: []
       }
+      lwa_token_cache: {
+        Row: {
+          id: number
+          token: string
+          expires_at: string
+          refreshed_at: string
+        }
+        Insert: {
+          id?: number
+          token: string
+          expires_at: string
+          refreshed_at?: string
+        }
+        Update: {
+          id?: number
+          token?: string
+          expires_at?: string
+          refreshed_at?: string
+        }
+        Relationships: []
+      }
+      lwa_token_refreshes: {
+        Row: {
+          id: number
+          started_at: string
+          expires_at: string
+          worker_id: string
+        }
+        Insert: {
+          id?: number
+          started_at?: string
+          expires_at?: string
+          worker_id: string
+        }
+        Update: {
+          id?: number
+          started_at?: string
+          expires_at?: string
+          worker_id?: string
+        }
+        Relationships: []
+      }
+      sms_sends: {
+        Row: {
+          briefing_id: string
+          sid: string
+          sent_at: string
+        }
+        Insert: {
+          briefing_id: string
+          sid: string
+          sent_at?: string
+        }
+        Update: {
+          briefing_id?: string
+          sid?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_sends_briefing_id_fkey"
+            columns: ["briefing_id"]
+            isOneToOne: true
+            referencedRelation: "briefings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       health_metrics: {
         Row: {
           captured_at: string | null
@@ -1519,6 +1587,14 @@ export type Database = {
       }
       release_cron_lock: {
         Args: { p_agent_name: string; p_worker_id: string }
+        Returns: boolean
+      }
+      claim_lwa_refresh: {
+        Args: { p_worker_id: string }
+        Returns: boolean
+      }
+      release_lwa_refresh: {
+        Args: { p_worker_id: string }
         Returns: boolean
       }
       purge_webhook_dedupe: {

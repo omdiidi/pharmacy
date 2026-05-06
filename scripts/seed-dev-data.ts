@@ -30,7 +30,7 @@ type Product = {
   category: string;
   form: string;
   pack_size: string;
-  watchlist_status: 'none' | 'watching' | 'active' | 'paused' | 'blocked';
+  watchlist_status: 'none' | 'watching' | 'evaluating' | 'active' | 'paused' | 'blocked';
 };
 
 const PRODUCTS: Product[] = [

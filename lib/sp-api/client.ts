@@ -27,11 +27,24 @@ export async function spFetch<T>(path: string, init: RequestInit = {}): Promise<
       if (attempt >= 5) {
         throw new Error(`SP-API ${path} ${res.status} after 5 retries: ${await res.text()}`);
       }
-      const delay = Math.min(1000 * 2 ** attempt + Math.random() * 200, 30_000);
+      // Honor Amazon's Retry-After header if present (P4.5 — D4 fix).
+      const retryAfter = res.headers.get('Retry-After');
+      const headerDelay = retryAfter ? parseRetryAfter(retryAfter) : null;
+      const localDelay = Math.min(1000 * 2 ** attempt + Math.random() * 200, 30_000);
+      const delay = headerDelay ?? localDelay;
       await new Promise((r) => setTimeout(r, delay));
       attempt++;
       continue;
     }
     throw new Error(`SP-API ${path} ${res.status}: ${await res.text()}`);
   }
+}
+
+/** Parse HTTP Retry-After header — supports seconds-int OR HTTP-date format. */
+function parseRetryAfter(header: string): number | null {
+  const seconds = Number(header);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1000, 30_000);
+  const date = Date.parse(header);
+  if (Number.isFinite(date)) return Math.max(0, Math.min(date - Date.now(), 30_000));
+  return null;
 }

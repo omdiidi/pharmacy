@@ -1,5 +1,8 @@
-// Public surface for the Keepa facade. Cred-gated by KEEPA_API_KEY presence.
+// Public surface for the Keepa facade. Cred-gated by KEEPA_API_KEY presence
+// (env-gate-sanitized via allEnvReal — no opt-in flag because the real Keepa
+// client is genuinely production-ready).
 
+import { allEnvReal } from '@/lib/env-gate';
 import { getRecentDeals as realGetRecentDeals, type DealOpts } from './deal';
 import { getProduct as realGetProduct, type ProductOpts } from './product';
 import { keepaFetch } from './client';
@@ -19,7 +22,7 @@ export interface KeepaClient {
 }
 
 export function keepaCredsPresent(): boolean {
-  return !!process.env.KEEPA_API_KEY;
+  return allEnvReal('KEEPA_API_KEY');
 }
 
 const realClient: KeepaClient = {

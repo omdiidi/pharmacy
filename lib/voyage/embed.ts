@@ -36,8 +36,26 @@ export async function embed(input: string | string[]): Promise<number[][] | null
       console.warn(`[voyage] embed failed: ${res.status} ${await res.text()}`);
       return null;
     }
-    const body = (await res.json()) as { data: Array<{ embedding: number[]; index: number }> };
-    return body.data.sort((a, b) => a.index - b.index).map((d) => d.embedding);
+    const raw = (await res.json()) as unknown;
+    // P4.8 — defensive guards: response shape may drift; refuse to write
+    // garbage into vector(1024) memory.embedding.
+    if (!raw || typeof raw !== 'object' || !Array.isArray((raw as { data?: unknown }).data)) {
+      console.warn('[voyage] response missing data array');
+      return null;
+    }
+    const data = (raw as { data: Array<{ embedding: unknown; index: number }> }).data;
+    const sorted = data
+      .sort((a, b) => a.index - b.index)
+      .map((d) => d.embedding);
+    for (const v of sorted) {
+      if (!Array.isArray(v) || v.length !== 1024) {
+        console.warn(
+          `[voyage] embedding dim != 1024 (got ${Array.isArray(v) ? v.length : typeof v})`,
+        );
+        return null;
+      }
+    }
+    return sorted as number[][];
   } catch (err) {
     console.warn('[voyage] embed exception:', err instanceof Error ? err.message : err);
     return null;
