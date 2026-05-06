@@ -10,7 +10,7 @@
 // skew safety. See P4.10.
 
 import { randomUUID } from 'node:crypto';
-import { createClient as createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 let memCache: { token: string; expiresAt: number } | null = null;
 let memInFlight: Promise<string> | null = null;

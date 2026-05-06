@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 import type OpenAI from 'openai';
+import type { ToolContext } from './index';
 
 const BRIEFING_TYPES = [
   'hot_arbitrage',
@@ -47,7 +48,7 @@ export const get_recent_briefings_def: OpenAI.Chat.Completions.ChatCompletionToo
 
 export async function get_recent_briefings(
   rawInput: unknown,
-  ctx: { pharmacyId: string },
+  ctx: ToolContext,
 ): Promise<string> {
   const parsed = InputSchema.safeParse(rawInput);
   if (!parsed.success) return JSON.stringify({ error: parsed.error.message });

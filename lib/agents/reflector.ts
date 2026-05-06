@@ -145,7 +145,7 @@ export async function runReflector(
   "reasoning": "string"
 }`,
   });
-  await recordLLMUsage(supabase, null, completion);
+  await recordLLMUsage(supabase, completion, { pharmacyId });
 
   const raw = completion.choices[0]?.message?.content ?? '{}';
   let parsed: z.infer<typeof OutputSchema>;

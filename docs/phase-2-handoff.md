@@ -299,6 +299,42 @@ These are documented in detail in the wave plans + E2E test plan. Quick list:
 
 ---
 
+---
+
+## Phase 2 hardening complete (2026-05-05)
+
+The Phase 2 hardening plan (`tmp/done-plans/2026-05-04-phase-2-hardening-fixes.md`) shipped in 5 commits closing 50 review findings:
+
+| Phase | Commit | Scope |
+|---|---|---|
+| Phase 1 | `f491963` | auth gates (admin client, allowlist, dev-login env gate) |
+| Phase 2 | `2f65f68` | kernel + undo correctness (atomic state flip, audit RPC, RLS-safe RPC) |
+| Phase 3 | `5023ff8` | observability + cost protection (claude_usage rate-limited Sentry escalation, budget cap, callAgentLLM 60s timeout) |
+| Phase 4a | `5da56d2` | cred-gate facade + integration layer (env-gate, real-or-fixture client routing, SP-API LWA shared cache + lease-table refresh, Twilio E.164, Voyage dim guards) |
+| Phase 4b | (this commit) | cross-layer cleanup + orders.status normalize |
+
+### Phase 4b additions
+
+- `lib/orders/status.ts` — `normalizeOrderStatus(raw)` maps SP-API CamelCase → canonical lowercase, throws on unknown.
+- Migration `20260505000004_orders_status_check.sql` — backfills any pre-existing CamelCase rows then locks `orders.status` to a 13-value canonical set.
+- Reject route + dismiss_all chat tool wired through `lib/kernel/reject.rejectOne` so both paths take the same atomic `reject_action_atomic` path with audit insert.
+- `enqueue_job` chat tool stamps `pharmacy_id` + `submitted_by` so cross-tenant job leakage is blocked at insert time.
+- `recordLLMUsage(supabase, completion, { userId?, pharmacyId? })` — options-object signature; all 11 call sites updated to thread `pharmacyId` so per-tenant cost attribution works.
+- Bookkeeper P&L filters `claude_usage` by `pharmacy_id` (multi-tenant correctness).
+- Tool ctx unified onto named `ToolContext` import across `query_orders`, `query_products`, `search_memory`, `get_recent_briefings`, `enqueue_job`.
+- `flag_anomaly` reverse path scopes `memory.delete` by `ctx.pharmacyId`.
+- Account Health `contributing_listing_ids` Zod schema relaxed to `z.string().min(1)` (UUID filter remains at use-site).
+- Research Analyst `urgency` Zod accepts floats and rounds (handles LLM cosmetic variance).
+
+### Remaining fix-laters (post-Phase-2)
+
+1. **Real EDI 850 client** — `lib/edi/_real.ts` is a placeholder; real send + SFTP poll lands when wholesaler creds populate.
+2. **Real SP-API messaging client** — `lib/sp-api/messaging.ts` raises `NotImplementedError`; activates after Buyer-Seller Messaging API integration.
+3. **Atomic budget claim** — `getTodaySpendUsd → MAX_DAILY_SPEND` is a check-then-act. A concurrent surge of agents could each pass the gate. Acceptable for single-pharmacy demo; a real per-tenant atomic claim RPC is a Phase 3+ multi-tenant prerequisite.
+4. **`search_memory` RLS** — service-role bypass relies on caller-threaded `ctx.pharmacyId`. Header comment in `lib/tools/search_memory.ts` documents the contract; RLS plumbing on the memory table is Phase 3+ multi-tenant work.
+
+---
+
 ## Final notes
 
 - The **E2E test plan** at `tmp/ready-plans/2026-05-05-comprehensive-e2e-test-plan.md` is the single source of truth for what to test and how. It has 50+ test cases, a master cred-toggle matrix, and Section 15's day-by-day onboarding sequence.

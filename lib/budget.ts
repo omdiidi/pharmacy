@@ -12,19 +12,24 @@ import { Sentry } from '@/lib/logger';
 let consecutiveFailures = 0;
 let lastEscalation = 0;
 
-// userId === null means "system spend" (e.g. cron-run agent). Migration
-// 20260501000001 dropped the NOT NULL on claude_usage.user_id to support this.
+// Phase 4b: signature changed to options-object form so callers can stamp
+// pharmacy_id (per-tenant cost attribution) without breaking the legacy
+// (supabase, userId, completion) call sites that didn't have a pharmacy
+// scope. Both userId and pharmacyId are optional — userId === null means
+// "system spend" (cron-run agent). Migration 20260501000001 dropped the
+// NOT NULL on claude_usage.user_id to support that.
 export async function recordLLMUsage(
   supabase: SupabaseClient<Database>,
-  userId: string | null,
   completion: OpenAI.Chat.Completions.ChatCompletion,
+  opts: { userId?: string | null; pharmacyId?: string | null } = {},
 ): Promise<void> {
   const usage = completion.usage;
   if (!usage) return;
   const cost = priceLLMUsage(completion.model, usage);
 
   const { error } = await supabase.from('claude_usage').insert({
-    user_id: userId,
+    user_id: opts.userId ?? null,
+    pharmacy_id: opts.pharmacyId ?? null,
     request_id: completion.id,
     model: completion.model,
     input_tokens: usage.prompt_tokens ?? 0,

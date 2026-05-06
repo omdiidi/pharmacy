@@ -1,6 +1,12 @@
+// SECURITY: This tool relies on ctx.pharmacyId being correctly threaded by the
+// caller. Service-role client bypasses RLS. Future tool authors: NEVER call
+// supabase queries here without enforcing pharmacy_id scope. RLS plumbing on
+// the memory table is Phase 3+ multi-tenant work.
+
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 import type OpenAI from 'openai';
+import type { ToolContext } from './index';
 
 const InputSchema = z.object({
   query: z.string().min(1).max(500),
@@ -29,7 +35,7 @@ export const search_memory_def: OpenAI.Chat.Completions.ChatCompletionTool = {
 
 // Phase 1: trigram text search via search_memory_text RPC. No Voyage calls.
 // Phase 1.5: swap to match_memory_vector RPC once memory.embedding populated.
-export async function search_memory(rawInput: unknown, ctx: { pharmacyId: string }): Promise<string> {
+export async function search_memory(rawInput: unknown, ctx: ToolContext): Promise<string> {
   const parsed = InputSchema.safeParse(rawInput);
   if (!parsed.success) return JSON.stringify({ error: parsed.error.message });
   const { query, memory_type, k } = parsed.data;

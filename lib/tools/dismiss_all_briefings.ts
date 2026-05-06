@@ -1,11 +1,11 @@
 // dismiss_all_briefings — chat tool. Marks matching pending inbox_items as
-// 'dismissed'. No executor call; pure state flip. Audit happens via the
-// inbox row state change itself; no audit_log insert because the UI's
-// Reject button also doesn't record one (it just flips state).
+// 'dismissed' via the kernel rejectOne function. Each dismissal records an
+// audit_log row through reject_action_atomic, matching the UI Reject button.
 
 import { z } from 'zod';
 import type OpenAI from 'openai';
 import { createClient } from '@/lib/supabase/server';
+import { rejectOne } from '@/lib/kernel/reject';
 import type { ToolContext } from './index';
 
 const InputSchema = z.object({
@@ -75,16 +75,12 @@ export async function dismiss_all_briefings(
   const errors: Array<{ inbox_item_id: string; error: string }> = [];
 
   for (const row of rows ?? []) {
-    const { error: updErr } = await supabase
-      .from('inbox_items')
-      .update({ state: 'dismissed', acted_at: new Date().toISOString() })
-      .eq('id', row.id)
-      .eq('state', 'pending');
-    if (updErr) {
-      failed++;
-      errors.push({ inbox_item_id: row.id, error: updErr.message });
-    } else {
+    const r = await rejectOne(supabase, row.id, 'chat_dismiss_all', ctx);
+    if (r.ok) {
       dismissed++;
+    } else {
+      failed++;
+      errors.push({ inbox_item_id: row.id, error: r.error });
     }
   }
 

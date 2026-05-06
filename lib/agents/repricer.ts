@@ -202,7 +202,7 @@ export async function runRepricer(
       );
       continue;
     }
-    await recordLLMUsage(supabase, null, completion);
+    await recordLLMUsage(supabase, completion, { pharmacyId });
 
     let parsed: z.infer<typeof OutputSchema>;
     try {

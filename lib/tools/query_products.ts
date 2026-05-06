@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 import type OpenAI from 'openai';
+import type { ToolContext } from './index';
 
 // Reject characters that break PostgREST `or=` parsing OR inject ilike wildcards we don't intend
 const SAFE_QUERY = /^[A-Za-z0-9 \-_.+/]+$/;
@@ -32,7 +33,7 @@ function escapeLike(s: string): string {
   return s.replace(/[\\%_]/g, (c) => '\\' + c);
 }
 
-export async function query_products(rawInput: unknown, ctx: { pharmacyId: string }): Promise<string> {
+export async function query_products(rawInput: unknown, ctx: ToolContext): Promise<string> {
   const parsed = InputSchema.safeParse(rawInput);
   if (!parsed.success) return JSON.stringify({ error: parsed.error.message });
   const { query, limit } = parsed.data;

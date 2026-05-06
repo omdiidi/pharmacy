@@ -158,7 +158,7 @@ export async function runListingAgent(
       continue;
     }
 
-    await recordLLMUsage(supabase, null, completion);
+    await recordLLMUsage(supabase, completion, { pharmacyId });
 
     const raw = completion.choices[0]?.message?.content ?? '{}';
     const stripped = stripJsonFence(raw);

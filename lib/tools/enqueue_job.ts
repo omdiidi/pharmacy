@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 import type OpenAI from 'openai';
+import type { ToolContext } from './index';
 
 const InputSchema = z.object({
   job_type: z.string().min(1).max(200),
@@ -27,7 +28,7 @@ export const enqueue_job_def: OpenAI.Chat.Completions.ChatCompletionTool = {
   },
 };
 
-export async function enqueue_job(rawInput: unknown, _ctx: { pharmacyId: string }): Promise<string> {
+export async function enqueue_job(rawInput: unknown, ctx: ToolContext): Promise<string> {
   const parsed = InputSchema.safeParse(rawInput);
   if (!parsed.success) return JSON.stringify({ error: parsed.error.message });
   const { job_type, payload, priority } = parsed.data;
@@ -42,6 +43,8 @@ export async function enqueue_job(rawInput: unknown, _ctx: { pharmacyId: string 
       payload: payload as never,
       status: 'pending',
       priority,
+      pharmacy_id: ctx.pharmacyId,
+      submitted_by: ctx.userId,
     })
     .select('id')
     .single();

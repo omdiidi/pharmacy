@@ -78,7 +78,7 @@ export async function runCustomerSuccess(
       pharmacy_id: pharmacyId,
     },
   });
-  await recordLLMUsage(supabase, null, triageCompletion);
+  await recordLLMUsage(supabase, triageCompletion, { pharmacyId });
   let triage: ReturnType<typeof TriageOutputSchema.parse>;
   try {
     triage = TriageOutputSchema.parse(
@@ -147,7 +147,7 @@ export async function runCustomerSuccess(
         tone_preferences: tonePrefs,
       },
     });
-    await recordLLMUsage(supabase, null, draftCompletion);
+    await recordLLMUsage(supabase, draftCompletion, { pharmacyId });
     try {
       draft = DraftOutputSchema.parse(
         JSON.parse(stripJsonFence(draftCompletion.choices[0]?.message?.content ?? '{}')),

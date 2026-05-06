@@ -1,12 +1,15 @@
 // POST /api/actions/reject
 // Atomic state flip to 'dismissed' (returns 409 if not pending/seen).
 // Writes an audit_log row with action='reject_briefing'. No executor invoked.
+// Phase 4b: routes through lib/kernel/reject.rejectOne for parity with the
+// chat-tool dismiss path.
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAuthenticatedUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { rejectOne } from '@/lib/kernel/reject';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,29 +44,13 @@ export async function POST(req: Request) {
   const supabase = createClient();
   const reason = body.reason ?? 'kaleem_rejected';
 
-  const { data: flipped } = await supabase
-    .from('inbox_items')
-    .update({ state: 'dismissed', dismissed_reason: reason })
-    .eq('id', body.inbox_item_id)
-    .eq('pharmacy_id', session.pharmacyId)
-    .in('state', ['pending', 'seen'])
-    .select('id')
-    .single();
-  if (!flipped) {
-    return NextResponse.json({ error: 'stale — already acted or not found' }, { status: 409 });
-  }
-
-  const { error: auditErr } = await supabase.from('audit_log').insert({
-    pharmacy_id: session.pharmacyId,
-    actor: session.email,
-    action: 'reject_briefing',
-    target_entity_type: 'inbox_items',
-    target_entity_id: body.inbox_item_id,
-    params: { reason },
+  const r = await rejectOne(supabase, body.inbox_item_id, reason, {
+    pharmacyId: session.pharmacyId,
+    userId: session.userId,
+    email: session.email,
   });
-  if (auditErr) {
-    console.warn('[reject] audit_log insert failed (state already flipped):', auditErr.message);
+  if (!r.ok) {
+    return NextResponse.json({ error: r.error }, { status: r.status });
   }
-
-  return NextResponse.json({ rejected: true });
+  return NextResponse.json({ rejected: true, audit_log_id: r.audit_log_id });
 }

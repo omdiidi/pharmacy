@@ -71,6 +71,7 @@ export async function runBookkeeper(
   const { data: usage } = await supabase
     .from('claude_usage')
     .select('estimated_cost_usd, model, created_at')
+    .eq('pharmacy_id', pharmacyId)
     .gte('created_at', start.toISOString())
     .lte('created_at', end.toISOString());
 
@@ -121,7 +122,7 @@ export async function runBookkeeper(
   "reasoning": "string"
 }`,
   });
-  await recordLLMUsage(supabase, null, completion);
+  await recordLLMUsage(supabase, completion, { pharmacyId });
 
   const raw = completion.choices[0]?.message?.content ?? '{}';
   let parsed: z.infer<typeof OutputSchema>;

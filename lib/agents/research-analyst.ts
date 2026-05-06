@@ -31,7 +31,7 @@ const PickSchema = z.object({
   asin: z.string().nullable(),
   score: z.number().min(0).max(100),
   confidence: z.number().min(0).max(1),
-  urgency: z.number().int().min(1).max(5),
+  urgency: z.number().min(1).max(5).transform((v) => Math.round(v)),
   rationale: z.string(),
   signals: z.array(z.string()),
 });
@@ -117,7 +117,7 @@ export async function runResearchAnalyst(
     systemPrompt: skillNoWebSearch,
     userPayload,
   });
-  await recordLLMUsage(supabase, null, completion);
+  await recordLLMUsage(supabase, completion, { pharmacyId });
 
   const raw = completion.choices[0]?.message?.content ?? '{}';
   let parsed: z.infer<typeof OutputSchema>;

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 import type OpenAI from 'openai';
+import type { ToolContext } from './index';
 
 const InputSchema = z.object({
   status: z.enum(['new', 'ordered_from_supplier', 'shipped', 'delivered', 'returned', 'refunded']).optional(),
@@ -32,7 +33,7 @@ export const query_orders_def: OpenAI.Chat.Completions.ChatCompletionTool = {
   },
 };
 
-export async function query_orders(rawInput: unknown, ctx: { pharmacyId: string }): Promise<string> {
+export async function query_orders(rawInput: unknown, ctx: ToolContext): Promise<string> {
   const parsed = InputSchema.safeParse(rawInput);
   if (!parsed.success) return JSON.stringify({ error: parsed.error.message });
   const { status, platform, since_days, limit } = parsed.data;

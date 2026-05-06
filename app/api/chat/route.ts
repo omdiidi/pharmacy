@@ -126,11 +126,14 @@ export async function POST(req: Request) {
           // Record usage for budget tracking
           if (lastUsage) {
             try {
-              await recordLLMUsage(supabase, session.userId, {
+              await recordLLMUsage(supabase, {
                 id: lastChunkId,
                 model: modelEcho,
                 usage: lastUsage,
-              } as OpenAI.Chat.Completions.ChatCompletion);
+              } as OpenAI.Chat.Completions.ChatCompletion, {
+                userId: session.userId,
+                pharmacyId: session.pharmacyId,
+              });
             } catch (err) {
               console.warn('[chat] recordLLMUsage failed:', err);
               captureRouteWarning(err, 'chat', { user_id: session.userId });

@@ -112,7 +112,7 @@ async function emitAutoPauseBriefing(
 const OutputSchema = z.object({
   status: z.enum(['green', 'yellow', 'red']),
   metrics: z.record(z.number()).optional(),
-  contributing_listing_ids: z.array(z.string().uuid()).optional(),
+  contributing_listing_ids: z.array(z.string().min(1)).optional(),
   proposed_corrective_actions: z
     .array(
       z.object({
@@ -202,7 +202,7 @@ export async function runAccountHealth(
     systemPrompt: skill,
     userPayload,
   });
-  await recordLLMUsage(supabase, null, completion);
+  await recordLLMUsage(supabase, completion, { pharmacyId });
 
   let parsed: z.infer<typeof OutputSchema>;
   try {

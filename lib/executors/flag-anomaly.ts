@@ -47,11 +47,16 @@ export const flagAnomaly: Executor = {
   async reverse(
     _params: unknown,
     forwardResult: ExecutorResult,
+    ctx: ExecutorContext,
   ): Promise<ExecutorResult> {
     const supabase = createAdminClient();
     const ids = (forwardResult.memory_ids ?? []) as string[];
     if (ids.length === 0) return { reverted: true, count: 0 };
-    const { error } = await supabase.from('memory').delete().in('id', ids);
+    const { error } = await supabase
+      .from('memory')
+      .delete()
+      .in('id', ids)
+      .eq('pharmacy_id', ctx.pharmacyId);
     if (error) {
       throw new Error(`flag_anomaly.reverse: ${error.message}`);
     }

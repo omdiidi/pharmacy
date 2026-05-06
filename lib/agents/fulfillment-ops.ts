@@ -27,6 +27,8 @@ import {
   type WholesalerSnapshot,
 } from '@/lib/edi';
 import type { NotificationEnvelope } from '@/lib/sp-api';
+import { normalizeOrderStatus } from '@/lib/orders/status';
+import { Sentry } from '@/lib/logger';
 
 const CandidateSchema = z.object({
   wholesaler: z.enum(['abc', 'mckesson', 'cardinal', 'parmed', 'ezrirx']),
@@ -97,9 +99,24 @@ export async function runFulfillmentOps(
     return { briefing_ids: [], candidates_total: 0, capped: false };
   }
 
-  // 1. Upsert order. Keep canonical SP-API OrderStatus casing verbatim.
+  // 1. Upsert order. Normalize SP-API CamelCase OrderStatus onto the canonical
+  // lowercase set enforced by orders_status_check (migration 20260505000004).
   const purchaseDate =
     change.OrderChangeTrigger?.TimeOfOrderChange ?? new Date().toISOString();
+  let normalizedStatus: string;
+  try {
+    normalizedStatus = normalizeOrderStatus(change.Summary.OrderStatus);
+  } catch (err) {
+    Sentry.captureMessage(
+      `[fulfillment-ops] unknown OrderStatus '${change.Summary.OrderStatus}' for ${change.AmazonOrderId}; skipping`,
+      { level: 'warning', tags: { agent: 'fulfillment-ops', stage: 'status-normalize' } },
+    );
+    console.warn(
+      `[fulfillment-ops] unknown OrderStatus '${change.Summary.OrderStatus}'; skipping:`,
+      err instanceof Error ? err.message : err,
+    );
+    return { briefing_ids: [], candidates_total: 0, capped: false };
+  }
   const { data: order, error: orderErr } = await supabase
     .from('orders')
     .upsert(
@@ -107,7 +124,7 @@ export async function runFulfillmentOps(
         pharmacy_id: pharmacyId,
         platform: 'amazon',
         platform_order_id: change.AmazonOrderId,
-        status: change.Summary.OrderStatus,
+        status: normalizedStatus,
         sold_at: purchaseDate,
       },
       { onConflict: 'platform,platform_order_id' },
@@ -174,7 +191,7 @@ export async function runFulfillmentOps(
         systemPrompt: skill,
         userPayload,
       });
-      await recordLLMUsage(supabase, null, completion);
+      await recordLLMUsage(supabase, completion, { pharmacyId });
       const raw = completion.choices[0]?.message?.content ?? '{}';
       parsed = FulfillmentOutputSchema.parse(JSON.parse(stripJsonFence(raw)));
     } catch (err) {
