@@ -171,11 +171,30 @@ export async function approveOne(
   });
 
   if (rpcErr || !rpcResult || rpcResult.length === 0) {
-    // RPC failed AFTER executor side-effect ran. Compensate best-effort.
+    // RPC failed AFTER executor side-effect ran. Best-effort compensation:
+    //   1. Reverse the executor (undo the side effect).
+    //   2. Revert inbox_items.state to 'pending' so the briefing is not
+    //      stranded as 'acted' with no audit row → Kaleem can retry.
     Sentry.captureException(rpcErr ?? new Error('audit RPC empty'), {
       tags: { kernel: 'approve', stage: 'audit-insert' },
+      extra: { inbox_item_id: inboxItemId, kind, pending_table: pendingTable },
     });
-    await tryReverseExecutor(kind, params, result, ctx).catch(() => {});
+    await tryReverseExecutor(kind, params, result, ctx).catch((err) => {
+      Sentry.captureException(err, {
+        tags: { kernel: 'approve', stage: 'compensation-reverse' },
+        extra: { inbox_item_id: inboxItemId, kind },
+      });
+    });
+    const { error: revertErr } = await supabase
+      .from('inbox_items')
+      .update({ state: 'pending', acted_at: null, action_taken: null, action_params: null })
+      .eq('id', inboxItemId);
+    if (revertErr) {
+      Sentry.captureException(revertErr, {
+        tags: { kernel: 'approve', stage: 'compensation-state-revert' },
+        extra: { inbox_item_id: inboxItemId },
+      });
+    }
     return {
       ok: false,
       status: 500,
