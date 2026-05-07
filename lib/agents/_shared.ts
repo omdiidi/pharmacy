@@ -93,6 +93,9 @@ export async function callAgentLLM(
           { role: 'user', content: JSON.stringify(args.userPayload) },
         ],
         response_format: { type: 'json_object' },
+        // Cap so OpenRouter doesn't reserve credit against the model's max.
+        // Agent JSON outputs fit comfortably in 8K — Bookkeeper digests etc.
+        max_tokens: 8192,
         // OpenRouter extension — same cast pattern as listing-agent.ts.
         reasoning: { effort: args.reasoningEffort ?? 'medium' },
       } as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming,

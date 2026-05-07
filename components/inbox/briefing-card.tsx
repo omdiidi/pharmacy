@@ -149,7 +149,7 @@ export function BriefingCard({ item }: { item: BriefingItem }) {
           {item.source_agent ? <Badge variant="outline">{item.source_agent}</Badge> : null}
           <span className="text-muted-foreground">{confidencePct}% confidence</span>
           {created ? (
-            <span className="text-muted-foreground">
+            <span className="text-muted-foreground" suppressHydrationWarning>
               · {formatDistanceToNow(created, { addSuffix: true })}
             </span>
           ) : null}
@@ -168,11 +168,11 @@ export function BriefingCard({ item }: { item: BriefingItem }) {
             expiresAt={item.undo_window_expires_at!}
           />
         ) : undone ? (
-          <p className="text-xs text-muted-foreground italic">
+          <p className="text-xs text-muted-foreground italic" suppressHydrationWarning>
             Reverted at {fmtTime(item.acted_at)}
           </p>
         ) : expiredApproved ? (
-          <p className="text-xs text-muted-foreground italic">
+          <p className="text-xs text-muted-foreground italic" suppressHydrationWarning>
             Approved at {fmtTime(item.acted_at)}
           </p>
         ) : item.state === 'pending' && item.proposed_actions && item.proposed_actions.length > 0 ? (

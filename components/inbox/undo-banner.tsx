@@ -20,14 +20,14 @@ function fmtRemaining(ms: number): string {
 
 export function UndoBanner({ auditLogId, expiresAt }: Props) {
   const router = useRouter();
-  const [remainingMs, setRemainingMs] = useState(
-    () => new Date(expiresAt).getTime() - Date.now(),
-  );
+  // Hydration-safe: don't compute remainingMs from Date.now() during SSR or
+  // initial client render — initialize to null and populate after mount.
+  const [remainingMs, setRemainingMs] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const id = setInterval(() => {
+    const tick = () => {
       const ms = new Date(expiresAt).getTime() - Date.now();
       setRemainingMs(ms);
       if (ms <= 0) {
@@ -36,11 +36,13 @@ export function UndoBanner({ auditLogId, expiresAt }: Props) {
         // replace this banner with the "Approved at HH:MM" muted-text branch.
         router.refresh();
       }
-    }, 1000);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [expiresAt, router]);
 
-  if (remainingMs <= 0) return null;
+  if (remainingMs !== null && remainingMs <= 0) return null;
 
   async function handleUndo() {
     setBusy(true);
@@ -66,8 +68,8 @@ export function UndoBanner({ auditLogId, expiresAt }: Props) {
 
   return (
     <div className="flex items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-      <span>
-        Approved · undo available for {fmtRemaining(remainingMs)}
+      <span suppressHydrationWarning>
+        Approved · undo available for {remainingMs === null ? '—:—' : fmtRemaining(remainingMs)}
         {error ? <span className="ml-2 text-red-700">({error})</span> : null}
       </span>
       <Button size="sm" variant="outline" onClick={handleUndo} disabled={busy}>

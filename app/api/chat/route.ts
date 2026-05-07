@@ -73,6 +73,9 @@ export async function POST(req: Request) {
               tool_choice: 'auto',
               stream: true,
               stream_options: { include_usage: true },
+              // Cap so OpenRouter doesn't reserve credit against the model's
+              // 64K theoretical max — chat replies fit comfortably here.
+              max_tokens: 8192,
               // OpenRouter extension — enables reasoning on Sonnet 4.6
               reasoning: { effort: CHATBOT_REASONING_EFFORT },
             } as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming,
