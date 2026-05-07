@@ -13,7 +13,7 @@ export function getAllowedEmails(): string[] {
   return cachedAllowed;
 }
 
-export async function requireAuthenticatedUser(_req: Request): Promise<SessionContext | null> {
+export async function requireAuthenticatedUser(): Promise<SessionContext | null> {
   const supabase = createUserClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;

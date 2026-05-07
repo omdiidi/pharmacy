@@ -1,3 +1,5 @@
+// Model pricing snapshot — verified 2026-05 against OpenRouter + Anthropic published rates.
+// Re-verify quarterly. Unknown models log a warning and are recorded as $0 (see priceLLMUsage).
 type ModelPricing = {
   inputPerM: number;
   outputPerM: number;

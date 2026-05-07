@@ -38,7 +38,7 @@ type AuditRow = {
 };
 
 export default async function InboxPage() {
-  const session = await requireAuthenticatedUser(new Request('http://internal/inbox'));
+  const session = await requireAuthenticatedUser();
   if (!session) redirect('/sign-in');
 
   const supabase = createClient();

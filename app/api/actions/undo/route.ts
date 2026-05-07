@@ -22,7 +22,7 @@ export const dynamic = 'force-dynamic';
 const Body = z.object({ audit_log_id: z.string().uuid() });
 
 export async function POST(req: Request) {
-  const session = await requireAuthenticatedUser(req);
+  const session = await requireAuthenticatedUser();
   if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const rl = await checkRateLimit(`actions:${session.userId}`, { window: 60_000, max: 60 });
@@ -43,6 +43,7 @@ export async function POST(req: Request) {
     );
   }
 
+  try {
   const supabase = createClient();
 
   // 1. Find audit row gated by undo window — DO NOT mark undone yet.
@@ -112,4 +113,14 @@ export async function POST(req: Request) {
   });
 
   return NextResponse.json({ undone: true, reverse_result: reverseResult });
+  } catch (err) {
+    Sentry.captureException(err, {
+      tags: { route: 'actions/undo' },
+      extra: { audit_log_id: body.audit_log_id },
+    });
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'internal error' },
+      { status: 500 },
+    );
+  }
 }

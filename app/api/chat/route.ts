@@ -23,7 +23,7 @@ type ToolCallAccum = {
 };
 
 export async function POST(req: Request) {
-  const session = await requireAuthenticatedUser(req);
+  const session = await requireAuthenticatedUser();
   if (!session) return new Response('Unauthorized', { status: 401 });
 
   const rl = await checkRateLimit(`chat:${session.userId}`, { window: 60_000, max: 60 });

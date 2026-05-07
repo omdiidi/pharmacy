@@ -10,6 +10,7 @@ import { requireAuthenticatedUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { rejectOne } from '@/lib/kernel/reject';
+import { Sentry } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,7 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
-  const session = await requireAuthenticatedUser(req);
+  const session = await requireAuthenticatedUser();
   if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const rl = await checkRateLimit(`actions:${session.userId}`, { window: 60_000, max: 60 });
@@ -41,16 +42,27 @@ export async function POST(req: Request) {
     );
   }
 
-  const supabase = createClient();
-  const reason = body.reason ?? 'kaleem_rejected';
+  try {
+    const supabase = createClient();
+    const reason = body.reason ?? 'kaleem_rejected';
 
-  const r = await rejectOne(supabase, body.inbox_item_id, reason, {
-    pharmacyId: session.pharmacyId,
-    userId: session.userId,
-    email: session.email,
-  });
-  if (!r.ok) {
-    return NextResponse.json({ error: r.error }, { status: r.status });
+    const r = await rejectOne(supabase, body.inbox_item_id, reason, {
+      pharmacyId: session.pharmacyId,
+      userId: session.userId,
+      email: session.email,
+    });
+    if (!r.ok) {
+      return NextResponse.json({ error: r.error }, { status: r.status });
+    }
+    return NextResponse.json({ rejected: true, audit_log_id: r.audit_log_id });
+  } catch (err) {
+    Sentry.captureException(err, {
+      tags: { route: 'actions/reject' },
+      extra: { inbox_item_id: body.inbox_item_id },
+    });
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'internal error' },
+      { status: 500 },
+    );
   }
-  return NextResponse.json({ rejected: true, audit_log_id: r.audit_log_id });
 }

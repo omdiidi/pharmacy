@@ -19,6 +19,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   'not-authorized':
     'Your email is not authorized for this app. Contact Dev or Nick.',
   'callback-failed': 'Sign-in callback failed. Please try the magic link again.',
+  'missing-code': 'Magic-link callback was missing the verification code. Request a new link below.',
+  'exchange-failed': 'Could not verify the magic link (it may have expired or already been used). Request a new one below.',
   expired: 'That magic link has expired. Request a new one below.',
 };
 
