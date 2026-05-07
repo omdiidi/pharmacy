@@ -8,7 +8,10 @@ import { createClient } from '@/lib/supabase/server';
 import type { ToolContext } from './index';
 
 const InputSchema = z.object({
-  window_hours: z.number().int().min(1).max(168).default(24),
+  // Default 30 days — pending briefings don't age out by time, they age out
+  // by action. Old default of 24h made the tool report "empty" while the
+  // Inbox UI showed 30+ pending rows.
+  window_hours: z.number().int().min(1).max(8760).default(720),
 });
 
 export const summarize_inbox_def: OpenAI.Chat.Completions.ChatCompletionTool = {
@@ -16,11 +19,11 @@ export const summarize_inbox_def: OpenAI.Chat.Completions.ChatCompletionTool = {
   function: {
     name: 'summarize_inbox',
     description:
-      "Aggregate pending briefings in the last window_hours, grouped by source_agent. Returns counts, top urgency examples, and a flat list of recent titles. Use when Kaleem asks 'what's in my inbox' or before a batch_approve_briefings call.",
+      "Aggregate pending briefings (default last 30 days), grouped by source_agent. Returns counts, top urgency examples, and a flat list of recent titles. Use when Kaleem asks 'what's in my inbox' or before a batch_approve_briefings call. Override window_hours to a smaller value (e.g. 24) when Kaleem explicitly asks 'what came in today'.",
     parameters: {
       type: 'object',
       properties: {
-        window_hours: { type: 'number', default: 24 },
+        window_hours: { type: 'number', default: 720 },
       },
       required: [],
       additionalProperties: false,
