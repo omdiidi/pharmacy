@@ -25,21 +25,65 @@ export function Sidebar() {
   if (pathname?.startsWith('/sign-in')) return null;
 
   return (
-    <aside className="hidden md:flex h-screen w-60 shrink-0 flex-col border-r bg-card">
-      <div className="flex items-center justify-between px-4 h-14 border-b">
-        <span className="text-base font-semibold tracking-tight text-foreground">
-          PharmaDash
-        </span>
-        <button
-          type="button"
-          aria-label="Notifications"
-          className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-        >
-          <Bell className="h-4 w-4" />
-        </button>
-      </div>
+    <>
+      <aside className="hidden md:flex h-screen w-60 shrink-0 flex-col border-r bg-card">
+        <div className="flex items-center justify-between px-4 h-14 border-b">
+          <span className="text-base font-semibold tracking-tight text-foreground">
+            PharmaDash
+          </span>
+          <button
+            type="button"
+            aria-label="Notifications"
+            className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          >
+            <Bell className="h-4 w-4" />
+          </button>
+        </div>
 
-      <nav className="flex-1 px-2 py-4 space-y-1">
+        <nav className="flex-1 px-2 py-4 space-y-1">
+          {navItems.map((item) => {
+            const active = item.href === '/' ? pathname === '/' : pathname?.startsWith(item.href);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  active
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="border-t p-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold">
+              K
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-foreground truncate">Kaleem</div>
+              <div className="text-xs text-muted-foreground truncate">Pharmacist</div>
+            </div>
+            <button
+              type="button"
+              aria-label="Settings"
+              className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Mobile bottom tab bar — fixed-position so content can scroll under */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 flex border-t bg-card">
         {navItems.map((item) => {
           const active = item.href === '/' ? pathname === '/' : pathname?.startsWith(item.href);
           const Icon = item.icon;
@@ -48,37 +92,18 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                'flex flex-1 flex-col items-center justify-center gap-1 py-2 text-xs font-medium transition-colors min-h-[3.5rem]',
                 active
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                  ? 'text-primary'
+                  : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              <Icon className="h-4 w-4" />
+              <Icon className="h-5 w-5" />
               <span>{item.label}</span>
             </Link>
           );
         })}
       </nav>
-
-      <div className="border-t p-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold">
-            K
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-foreground truncate">Kaleem</div>
-            <div className="text-xs text-muted-foreground truncate">Pharmacist</div>
-          </div>
-          <button
-            type="button"
-            aria-label="Settings"
-            className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-          >
-            <Settings className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-    </aside>
+    </>
   );
 }
